@@ -1,0 +1,74 @@
+version: '3'
+
+vars:
+  CLAUDE_DIR: "{{.ROOT_DIR}}/.claude"
+
+tasks:
+  install:
+    desc: Install project dependencies using Poetry
+    cmds:
+      - poetry install
+
+  fetch:
+    desc: Fetch historical price data and benchmark data
+    deps: [fetch:prices, fetch:benchmarks]
+
+  fetch:prices:
+    desc: Fetch historical price data only
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_prices.py
+
+  fetch:benchmarks:
+    desc: Fetch benchmark data only
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_benchmarks.py
+
+  dbt:
+    desc: Run all DBT operations (seed and run)
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt seed
+      - poetry run dbt run
+
+  dbt:seed:
+    desc: Load holdings data into the database
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt seed
+
+  dbt:run:
+    desc: Run all DBT transformations
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt run
+
+  dbt:test:
+    desc: Run DBT tests
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt test
+
+  run:ui:
+    desc: Start the Streamlit dashboard
+    cmds:
+      - poetry run streamlit run portfolio_analytics/app.py
+  
+  # Claude configuration sync
+  claude:sync:
+    desc: Copy Claude agents and reference files into project .claude directory
+    cmds:
+      - mkdir -p "{{.CLAUDE_DIR}}/agents"
+      - mkdir -p "{{.CLAUDE_DIR}}/reference"
+      - |
+        if [ -d ~/.claude/agents ]; then
+          cp -r ~/.claude/agents/* "{{.CLAUDE_DIR}}/agents/" 2>/dev/null || echo "No agents to copy"
+        else
+          echo "~/.claude/agents directory not found"
+        fi
+      - |
+        if [ -d ~/.claude/reference ]; then
+          cp -r ~/.claude/reference/* "{{.CLAUDE_DIR}}/reference/" 2>/dev/null || echo "No reference files to copy"
+        else
+          echo "~/.claude/reference directory not found"
+        fi
+    silent: false

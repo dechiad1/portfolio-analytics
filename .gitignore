@@ -1,0 +1,60 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# DBT
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Streamlit
+.streamlit/
+
+# Logs
+*.log
+
+# claude
+.claude/settings*
+
+# holdings
+holdings.csv

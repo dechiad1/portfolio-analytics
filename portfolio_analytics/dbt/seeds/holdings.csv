@@ -1,0 +1,18 @@
+ticker,name,asset_class,sector,broker,purchase_date
+MJGXX,JPMorgan US Govt Money Market Fund,Cash & Equivalents,Money Market,Chase,2022-01-15
+JPM,JP Morgan Chase & Co,U.S. Stocks,Financials,Chase,2022-01-15
+GTBIF,Green Thumb Industries Inc,U.S. Stocks,Consumer Discretionary,Chase,2022-01-15
+VBIAX,Vanguard Balanced Index Fund Admiral,Multi-Asset,Balanced,Vanguard,2022-01-15
+VFFVX,Vanguard Target Retirement 2055,Multi-Asset,Target Date,Vanguard,2022-01-15
+VFIAX,Vanguard 500 Index Fund Admiral,U.S. Stocks,Broad Market,Vanguard,2022-01-15
+VFWAX,Vanguard FTSE All-World ex-US Index,International Stocks,International,Vanguard,2022-01-15
+VGELX,Vanguard Energy Index Fund Admiral,U.S. Stocks,Energy,Vanguard,2022-01-15
+VGHCX,Vanguard Health Care Index Fund Admiral,U.S. Stocks,Healthcare,Vanguard,2022-01-15
+VGPMX,Vanguard Precious Metals and Mining,Commodities,Materials,Vanguard,2022-01-15
+VIMAX,Vanguard Mid-Cap Index Fund Admiral,U.S. Stocks,Mid Cap,Vanguard,2022-01-15
+VLCAX,Vanguard Large-Cap Index Fund Admiral,U.S. Stocks,Large Cap,Vanguard,2022-01-15
+VVIAX,Vanguard Value Index Fund Admiral,U.S. Stocks,Value,Vanguard,2022-01-15
+VWEHX,Vanguard High-Yield Corporate Fund Admiral,Bonds,Corporate Bonds,Vanguard,2022-01-15
+VMRXX,Vanguard Municipal Money Market Fund,Cash & Equivalents,Money Market,Vanguard,2022-01-15
+VMFXX,Vanguard Federal Money Market Fund,Cash & Equivalents,Money Market,Vanguard,2022-01-15
+VTTSX,Vanguard Target Retirement 2030,Multi-Asset,Target Date,Vanguard,2022-01-15

@@ -1,0 +1,74 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw data tables loaded from Python ingestion scripts
+    schema: main
+    tables:
+      - name: raw_prices
+        description: Historical price data for all holdings
+        columns:
+          - name: date
+            description: Trading date
+          - name: ticker
+            description: Stock/fund ticker symbol
+          - name: open
+            description: Opening price
+          - name: high
+            description: High price
+          - name: low
+            description: Low price
+          - name: close
+            description: Closing price (adjusted)
+          - name: volume
+            description: Trading volume
+      
+      - name: raw_benchmark_prices
+        description: Benchmark (S&P 500) price data
+        columns:
+          - name: date
+            description: Trading date
+          - name: benchmark_ticker
+            description: Benchmark ticker (e.g., VFIAX)
+          - name: benchmark_price
+            description: Benchmark closing price
+      
+      - name: raw_risk_free_rates
+        description: Risk-free rate data (10Y Treasury proxy)
+        columns:
+          - name: date
+            description: Date
+          - name: risk_free_rate
+            description: Annual risk-free rate
+          - name: risk_free_rate_daily
+            description: Daily risk-free rate
+
+      - name: raw_fund_metadata
+        description: Fund metadata from Yahoo Finance API
+        columns:
+          - name: ticker
+            description: Fund ticker symbol
+          - name: fund_name
+            description: Official fund name
+          - name: expense_ratio
+            description: Annual expense ratio (e.g., 0.0003 = 0.03%)
+          - name: fund_family
+            description: Fund family/provider (e.g., Vanguard)
+          - name: category
+            description: Fund category/classification
+          - name: fund_inception_date
+            description: Fund inception date
+          - name: total_assets
+            description: Total assets under management
+          - name: currency
+            description: Fund currency (e.g., USD)
+          - name: exchange
+            description: Exchange where fund is traded
+          - name: quote_type
+            description: Security type (ETF, MUTUALFUND, EQUITY)
+          - name: long_business_summary
+            description: Fund mandate/description
+          - name: asset_distribution
+            description: Asset allocation breakdown
+          - name: top_sectors
+            description: Top sector weightings
