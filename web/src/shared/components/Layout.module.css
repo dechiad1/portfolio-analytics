@@ -1,0 +1,83 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.headerContent {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logoSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logoIcon {
+  color: var(--color-primary);
+}
+
+.logoText {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  display: none;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainContent {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  flex: 1;
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .headerContent {
+    padding: 0 1.5rem;
+  }
+
+  .logoText {
+    display: block;
+  }
+
+  .mainContent {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* Desktop and up */
+@media (min-width: 1024px) {
+  .headerContent {
+    padding: 0 2rem;
+  }
+
+  .mainContent {
+    padding: 2rem;
+  }
+}

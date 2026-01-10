@@ -1,0 +1,95 @@
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background-color: var(--color-bg-card);
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+}
+
+.cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.cardLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.cardValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.cardValue.positive {
+  color: var(--color-success);
+}
+
+.cardValue.negative {
+  color: var(--color-error);
+}
+
+.bestPerformer {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.ticker {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.returnValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.returnValue.positive {
+  color: var(--color-success);
+}
+
+.returnValue.negative {
+  color: var(--color-error);
+}
+
+/* Small screens - 2 columns */
+@media (min-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop - 4 columns */
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

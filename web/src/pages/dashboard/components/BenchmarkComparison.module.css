@@ -1,0 +1,92 @@
+.container {
+  background-color: var(--color-bg-card);
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  padding: 1.25rem;
+}
+
+.title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.chartWrapper {
+  width: 100%;
+  min-height: 300px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.tooltip {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 0.75rem;
+  min-width: 160px;
+}
+
+.tooltipHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tooltipTicker {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.875rem;
+}
+
+.tooltipName {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.tooltipContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tooltipLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.tooltipValue {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.positive {
+  color: var(--color-success);
+}
+
+.negative {
+  color: var(--color-error);
+}
