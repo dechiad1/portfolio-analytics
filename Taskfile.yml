@@ -52,7 +52,74 @@ tasks:
     desc: Start the Streamlit dashboard
     cmds:
       - poetry run streamlit run portfolio_analytics/app.py
-  
+
+  # Database migration tasks
+  db:migrate:
+    desc: Run pending database migrations
+    dir: api
+    cmds:
+      - poetry run alembic upgrade head
+
+  db:migrate:downgrade:
+    desc: Downgrade database by one revision
+    dir: api
+    cmds:
+      - poetry run alembic downgrade -1
+
+  db:migrate:create:
+    desc: Create a new database migration (requires MESSAGE variable)
+    dir: api
+    cmds:
+      - poetry run alembic revision -m "{{.MESSAGE}}"
+
+  db:migrate:history:
+    desc: Show database migration history
+    dir: api
+    cmds:
+      - poetry run alembic history
+
+  db:migrate:current:
+    desc: Show current database migration revision
+    dir: api
+    cmds:
+      - poetry run alembic current
+
+  # Docker services
+  docker:up:
+    desc: Start all Docker services (PostgreSQL)
+    dir: docker
+    cmds:
+      - docker compose up -d
+
+  docker:down:
+    desc: Stop all Docker services
+    dir: docker
+    cmds:
+      - docker compose down
+
+  docker:logs:
+    desc: View Docker service logs
+    dir: docker
+    cmds:
+      - docker compose logs
+
+  docker:reset:
+    desc: Stop services and remove all data volumes
+    dir: docker
+    cmds:
+      - docker compose down -v
+      - echo "All data volumes removed. Run 'task docker:up' to start fresh."
+
+  # Complete local setup
+  setup:local:
+    desc: Complete local development setup (start Docker, run migrations)
+    cmds:
+      - task: docker:up
+      - echo "Waiting for PostgreSQL to be ready..."
+      - sleep 5
+      - task: db:migrate
+      - echo "Local setup complete! Database is ready."
+
   # Claude configuration sync
   claude:sync:
     desc: Copy Claude agents and reference files into project .claude directory

@@ -1,0 +1,15 @@
+database:
+  postgres:
+    host: postgres-prod.internal
+    port: 5432
+    database: portfolio_users
+    user: portfolio_api
+    password: ${POSTGRES_PASSWORD}
+  duckdb:
+    path: /data/portfolio.duckdb
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins:
+    - https://portfolio-analytics.example.com

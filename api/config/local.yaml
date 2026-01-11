@@ -1,0 +1,16 @@
+database:
+  postgres:
+    host: localhost
+    port: 5433
+    database: portfolio_users
+    user: postgres
+    password: postgres
+  duckdb:
+    path: ../portfolio_analytics/data/portfolio.duckdb
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins:
+    - http://localhost:3000
+    - http://localhost:5173
