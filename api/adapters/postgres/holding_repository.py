@@ -65,19 +65,29 @@ class PostgresHoldingRepository(HoldingRepository):
 
         return self._row_to_holding(row)
 
-    def get_by_session_id(self, session_id: UUID) -> list[Holding]:
-        """Retrieve all holdings for a session."""
+    def get_by_session_id(self, session_id: UUID | None) -> list[Holding]:
+        """Retrieve all holdings for a session. If session_id is None, return all holdings."""
         with self._pool.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, session_id, ticker, name, asset_class,
-                       sector, broker, purchase_date, created_at
-                FROM holdings
-                WHERE session_id = %s
-                ORDER BY created_at ASC
-                """,
-                (session_id,),
-            )
+            if session_id is None:
+                cur.execute(
+                    """
+                    SELECT id, session_id, ticker, name, asset_class,
+                           sector, broker, purchase_date, created_at
+                    FROM holdings
+                    ORDER BY created_at ASC
+                    """
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, session_id, ticker, name, asset_class,
+                           sector, broker, purchase_date, created_at
+                    FROM holdings
+                    WHERE session_id = %s
+                    ORDER BY created_at ASC
+                    """,
+                    (session_id,),
+                )
             rows = cur.fetchall()
 
         return [self._row_to_holding(row) for row in rows]

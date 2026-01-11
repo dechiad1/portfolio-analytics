@@ -59,7 +59,6 @@ def _resolve_env_vars(value: Any) -> Any:
 
 @lru_cache
 def load_config() -> AppConfig:
-    """Load configuration from YAML file based on environment."""
     env = os.environ.get("APP_ENV", "local")
     config_path = Path(__file__).parent / "config" / f"{env}.yaml"
 
@@ -97,7 +96,6 @@ def get_postgres_pool():
             user=config.database.postgres.user,
             password=config.database.postgres.password,
         )
-        _postgres_pool.initialize_schema()
     return _postgres_pool
 
 

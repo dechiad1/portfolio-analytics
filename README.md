@@ -18,16 +18,67 @@ Data Sources (APIs) → Python Ingestion → DuckDB → DBT Transformations → 
 
 ## 📦 Tech Stack
 
+### Backend & Data
+- **FastAPI**: Modern Python web framework for API
+- **PostgreSQL**: Relational database for user sessions and holdings
 - **Python**: Data ingestion and orchestration
 - **DuckDB**: Embedded analytical database
 - **DBT**: SQL-based data transformations
-- **Streamlit**: Interactive dashboards (or Evidence.dev)
+- **Alembic**: Database migration management
+
+### Frontend & Visualization
+- **React**: Modern web UI for portfolio management
+- **Streamlit**: Interactive dashboards
 - **yfinance**: Free financial data API
+
+### Infrastructure
+- **Docker**: Container orchestration for local development
+- **Poetry**: Python dependency management
 
 ## 🚀 Quick Start
 
-### 1. Setup Environment
+### Option 1: Complete Local Setup (Recommended)
 
+This project now includes a FastAPI backend with PostgreSQL. The easiest way to get started:
+
+```bash
+# Install Task (if not already installed)
+# On macOS:
+brew install go-task/tap/go-task
+
+# Start PostgreSQL in Docker and run migrations
+task setup:local
+
+# Install Python dependencies (for analytics)
+poetry install
+
+# Run the API server
+cd api && poetry run uvicorn main:app --reload
+
+# (In another terminal) Run the Streamlit dashboard
+task run:ui
+```
+
+### Option 2: Manual Setup
+
+#### 1a. Setup Environment
+
+```bash
+# Install dependencies using Poetry
+poetry install
+```
+
+#### 1b. Setup Database (Docker)
+
+```bash
+# Start PostgreSQL container
+task docker:up
+
+# Run database migrations
+task db:migrate
+```
+
+Or without Docker:
 ```bash
 # Create virtual environment
 python -m venv venv
@@ -79,6 +130,18 @@ Open browser to http://localhost:8501
 
 ```
 portfolio-analytics/
+├── api/                           # FastAPI backend (Hexagonal Architecture)
+│   ├── config/                    # Environment-specific configs
+│   ├── api/                       # API layer (routers, schemas, mappers)
+│   ├── domain/                    # Core business logic
+│   ├── adapters/                  # External integrations (Postgres, DuckDB)
+│   ├── alembic/                   # Database migrations
+│   └── main.py                    # Application entry point
+├── web/                           # React frontend
+│   └── src/                       # React components & pages
+├── docker/                        # Docker infrastructure
+│   ├── docker-compose.yml         # PostgreSQL service
+│   └── README.md                  # Docker setup guide
 ├── data/
 │   ├── portfolio.duckdb          # DuckDB database (created on first run)
 │   └── raw/                       # Raw data files (optional backup)
@@ -108,7 +171,7 @@ portfolio-analytics/
 ├── docs/
 │   └── setup_guide.md             # Detailed setup instructions
 ├── app.py                         # Streamlit dashboard
-├── requirements.txt               # Python dependencies
+├── Taskfile.yml                   # Task automation
 └── README.md                      # This file
 ```
 

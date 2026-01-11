@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { PortfolioAnalytics } from '../../shared/types';
-import { useSession } from '../../shared/hooks/useSession';
 import { ApiClientError } from '../../shared/api/client';
 import { fetchAnalytics } from './dashboardApi';
 
@@ -22,19 +21,16 @@ interface DashboardDataState {
  * Hook to fetch and manage dashboard analytics data.
  */
 export function useDashboardData(): DashboardDataState {
-  const { sessionId } = useSession();
   const [analytics, setAnalytics] = useState<PortfolioAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadAnalytics = useCallback(async () => {
-    if (!sessionId) return;
-
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await fetchAnalytics(sessionId);
+      const data = await fetchAnalytics();
       setAnalytics(data);
     } catch (err) {
       const message = err instanceof ApiClientError
@@ -44,7 +40,7 @@ export function useDashboardData(): DashboardDataState {
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     loadAnalytics();

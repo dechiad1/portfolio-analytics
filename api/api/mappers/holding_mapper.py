@@ -1,7 +1,17 @@
 from domain.models.holding import Holding
-from domain.commands.compute_analytics import HoldingAnalytics, PortfolioAnalytics
+from domain.commands.compute_analytics import (
+    TickerAnalytics,
+    PortfolioAnalytics,
+    AssetClassBreakdown,
+    SectorBreakdown,
+)
 from api.schemas.holding import HoldingResponse, HoldingListResponse, BulkCreateHoldingsResponse
-from api.schemas.analytics import HoldingAnalyticsResponse, AnalyticsResponse
+from api.schemas.analytics import (
+    TickerAnalyticsResponse,
+    AnalyticsResponse,
+    AssetClassBreakdownResponse,
+    SectorBreakdownResponse,
+)
 
 
 class HoldingMapper:
@@ -42,34 +52,61 @@ class HoldingMapper:
     def analytics_to_response(analytics: PortfolioAnalytics) -> AnalyticsResponse:
         """Convert PortfolioAnalytics to AnalyticsResponse."""
         return AnalyticsResponse(
-            session_id=analytics.session_id,
-            total_holdings=analytics.total_holdings,
+            holdings_count=analytics.holdings_count,
+            avg_total_return_pct=analytics.avg_total_return_pct,
+            avg_annualized_return_pct=analytics.avg_annualized_return_pct,
+            avg_sharpe_ratio=analytics.avg_sharpe_ratio,
+            beat_benchmark_count=analytics.beat_benchmark_count,
             holdings=[
-                HoldingMapper._holding_analytics_to_response(h)
+                HoldingMapper._ticker_analytics_to_response(h)
                 for h in analytics.holdings
             ],
-            portfolio_avg_return=analytics.portfolio_avg_return,
-            portfolio_avg_volatility=analytics.portfolio_avg_volatility,
-            asset_class_breakdown=analytics.asset_class_breakdown,
-            sector_breakdown=analytics.sector_breakdown,
-            broker_breakdown=analytics.broker_breakdown,
+            asset_class_breakdown=[
+                HoldingMapper._asset_class_breakdown_to_response(b)
+                for b in analytics.asset_class_breakdown
+            ],
+            sector_breakdown=[
+                HoldingMapper._sector_breakdown_to_response(b)
+                for b in analytics.sector_breakdown
+            ],
         )
 
     @staticmethod
-    def _holding_analytics_to_response(
-        holding: HoldingAnalytics,
-    ) -> HoldingAnalyticsResponse:
-        """Convert HoldingAnalytics to HoldingAnalyticsResponse."""
-        return HoldingAnalyticsResponse(
-            ticker=holding.ticker,
-            name=holding.name,
-            asset_class=holding.asset_class,
-            sector=holding.sector,
-            broker=holding.broker,
-            purchase_date=holding.purchase_date,
-            latest_return=holding.latest_return,
-            cumulative_return=holding.cumulative_return,
-            volatility=holding.volatility,
-            expense_ratio=holding.expense_ratio,
-            category=holding.category,
+    def _ticker_analytics_to_response(
+        ticker: TickerAnalytics,
+    ) -> TickerAnalyticsResponse:
+        """Convert TickerAnalytics to TickerAnalyticsResponse."""
+        return TickerAnalyticsResponse(
+            ticker=ticker.ticker,
+            name=ticker.name,
+            asset_class=ticker.asset_class,
+            sector=ticker.sector,
+            total_return_pct=ticker.total_return_pct,
+            annualized_return_pct=ticker.annualized_return_pct,
+            volatility_pct=ticker.volatility_pct,
+            sharpe_ratio=ticker.sharpe_ratio,
+            vs_benchmark_pct=ticker.vs_benchmark_pct,
+            expense_ratio=ticker.expense_ratio,
+        )
+
+    @staticmethod
+    def _asset_class_breakdown_to_response(
+        breakdown: AssetClassBreakdown,
+    ) -> AssetClassBreakdownResponse:
+        """Convert AssetClassBreakdown to AssetClassBreakdownResponse."""
+        return AssetClassBreakdownResponse(
+            asset_class=breakdown.asset_class,
+            count=breakdown.count,
+            avg_return=breakdown.avg_return,
+        )
+
+    @staticmethod
+    def _sector_breakdown_to_response(
+        breakdown: SectorBreakdown,
+    ) -> SectorBreakdownResponse:
+        """Convert SectorBreakdown to SectorBreakdownResponse."""
+        return SectorBreakdownResponse(
+            sector=breakdown.sector,
+            count=breakdown.count,
+            avg_return=breakdown.avg_return,
         )

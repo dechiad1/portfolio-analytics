@@ -26,27 +26,35 @@ api/
 ## Prerequisites
 
 - Python 3.11+
-- PostgreSQL 14+
+- PostgreSQL 14+ (or use Docker - recommended)
 - Poetry
 
 ## Setup
+
+### Option 1: Using Docker (Recommended)
 
 1. Install dependencies:
 ```bash
 poetry install
 ```
 
-2. Set up PostgreSQL database:
+2. Start PostgreSQL container:
 ```bash
-createdb portfolio_users
+# From project root
+task docker:up
 ```
 
-3. Configure environment:
+3. Run database migrations:
 ```bash
-export APP_ENV=local  # or dev, prod
+task db:migrate
 ```
 
-4. Run the server:
+4. Configure environment:
+```bash
+export APP_ENV=local  # defaults to local
+```
+
+5. Run the server:
 ```bash
 poetry run python main.py
 ```
@@ -100,6 +108,50 @@ Example:
 ticker,name,asset_class,sector,broker,purchase_date
 AAPL,Apple Inc,Equity,Technology,Fidelity,2023-01-15
 VTI,Vanguard Total Stock Market ETF,ETF,Diversified,Vanguard,2023-02-20
+```
+
+## Database Migrations
+
+This project uses Alembic for database schema management. Migration scripts are stored in `api/alembic/versions/`.
+
+### Common Migration Tasks
+
+Run pending migrations:
+```bash
+task db:migrate
+```
+
+Create a new migration:
+```bash
+task db:migrate:create MESSAGE="description_of_changes"
+```
+
+View migration history:
+```bash
+task db:migrate:history
+```
+
+View current migration version:
+```bash
+task db:migrate:current
+```
+
+Rollback last migration:
+```bash
+task db:migrate:downgrade
+```
+
+### Direct Alembic Commands
+
+All tasks above use `task` from the root directory. You can also run alembic directly from the `api` directory:
+
+```bash
+cd api
+poetry run alembic upgrade head
+poetry run alembic revision -m "description"
+poetry run alembic history
+poetry run alembic current
+poetry run alembic downgrade -1
 ```
 
 ## Development

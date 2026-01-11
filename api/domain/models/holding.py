@@ -8,7 +8,7 @@ class Holding(BaseModel):
     """Represents a portfolio holding."""
 
     id: UUID
-    session_id: UUID
+    session_id: UUID | None = None
     ticker: str
     name: str
     asset_class: str

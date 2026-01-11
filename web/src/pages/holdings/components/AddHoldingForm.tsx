@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { HoldingInput } from '../../../shared/types';
 import { ASSET_CLASSES, SECTORS } from '../../../shared/types';
+import { searchTickers, type TickerSearchResult } from '../tickerSearchApi';
 import styles from './AddHoldingForm.module.css';
 
 interface AddHoldingFormProps {
@@ -36,6 +37,12 @@ export function AddHoldingForm({
     purchase_date: getTodayDate(),
   });
   const [errors, setErrors] = useState<Partial<Record<keyof HoldingInput, string>>>({});
+  const [searchResults, setSearchResults] = useState<TickerSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof HoldingInput, string>> = {};
@@ -68,6 +75,84 @@ export function AddHoldingForm({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Debounced ticker search
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      setIsSearching(true);
+
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+
+      debounceTimeout.current = setTimeout(async () => {
+        try {
+          const results = await searchTickers(searchQuery, 10);
+          setSearchResults(results);
+          setShowDropdown(results.length > 0);
+        } catch (error) {
+          console.error('Failed to search tickers:', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300);
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setIsSearching(false);
+    }
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleTickerInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setFormData((prev) => ({ ...prev, ticker: value }));
+
+    if (errors.ticker) {
+      setErrors((prev) => ({ ...prev, ticker: undefined }));
+    }
+  };
+
+  const handleSelectTicker = (result: TickerSearchResult) => {
+    setFormData((prev) => ({
+      ...prev,
+      ticker: result.ticker,
+      name: result.name,
+      asset_class: result.asset_class,
+      sector: result.category || '',
+    }));
+    setSearchQuery(result.ticker);
+    setShowDropdown(false);
+    setSearchResults([]);
+
+    // Clear relevant errors
+    setErrors((prev) => ({
+      ...prev,
+      ticker: undefined,
+      name: undefined,
+      asset_class: undefined,
+      sector: undefined,
+    }));
   };
 
   const handleChange = (
@@ -111,7 +196,7 @@ export function AddHoldingForm({
       <h3 className={styles.title}>Add New Holding</h3>
 
       <div className={styles.formGrid}>
-        <div className={styles.field}>
+        <div className={styles.field} style={{ position: 'relative' }}>
           <label htmlFor="ticker" className={styles.label}>
             Ticker Symbol
           </label>
@@ -120,12 +205,32 @@ export function AddHoldingForm({
             id="ticker"
             name="ticker"
             value={formData.ticker}
-            onChange={handleChange}
+            onChange={handleTickerInputChange}
             className={`${styles.input} ${errors.ticker ? styles.inputError : ''}`}
-            placeholder="e.g., VTI"
+            placeholder="Type to search... (e.g., VTI)"
             disabled={isSubmitting}
+            autoComplete="off"
           />
+          {isSearching && (
+            <span className={styles.searchingIndicator}>Searching...</span>
+          )}
           {errors.ticker && <span className={styles.error}>{errors.ticker}</span>}
+
+          {showDropdown && searchResults.length > 0 && (
+            <div ref={dropdownRef} className={styles.dropdown}>
+              {searchResults.map((result) => (
+                <div
+                  key={result.ticker}
+                  className={styles.dropdownItem}
+                  onClick={() => handleSelectTicker(result)}
+                >
+                  <div className={styles.dropdownTicker}>{result.ticker}</div>
+                  <div className={styles.dropdownName}>{result.name}</div>
+                  <div className={styles.dropdownAssetClass}>{result.asset_class}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className={styles.field}>

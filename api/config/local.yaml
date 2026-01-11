@@ -1,7 +1,7 @@
 database:
   postgres:
     host: localhost
-    port: 5432
+    port: 5433
     database: portfolio_users
     user: postgres
     password: postgres

@@ -1,14 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
 from domain.services.holding_service import (
     HoldingService,
     HoldingNotFoundError,
     HoldingValidationError,
 )
-from domain.services.session_service import SessionService
 from api.schemas.holding import (
     CreateHoldingRequest,
     UpdateHoldingRequest,
@@ -17,51 +16,21 @@ from api.schemas.holding import (
     BulkCreateHoldingsResponse,
 )
 from api.mappers.holding_mapper import HoldingMapper
-from dependencies import get_holding_service, get_session_service
+from dependencies import get_holding_service
 
 router = APIRouter(prefix="/holdings", tags=["holdings"])
-
-
-def get_session_id(
-    x_session_id: Annotated[UUID | None, Header()] = None,
-    session_id: Annotated[UUID | None, Query()] = None,
-) -> UUID:
-    """Extract session ID from header or query parameter."""
-    resolved_id = x_session_id or session_id
-    if resolved_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session ID required via X-Session-ID header or session_id query parameter",
-        )
-    return resolved_id
-
-
-def validate_session_exists(
-    session_id: Annotated[UUID, Depends(get_session_id)],
-    session_service: Annotated[SessionService, Depends(get_session_service)],
-) -> UUID:
-    """Validate that the session exists."""
-    session = session_service.get_session(session_id)
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found",
-        )
-    session_service.touch_session(session_id)
-    return session_id
 
 
 @router.get(
     "",
     response_model=HoldingListResponse,
-    summary="List holdings for session",
+    summary="List all holdings",
 )
 def list_holdings(
-    session_id: Annotated[UUID, Depends(validate_session_exists)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> HoldingListResponse:
-    """List all holdings for the session."""
-    holdings = holding_service.get_holdings_for_session(session_id)
+    """List all holdings."""
+    holdings = holding_service.get_holdings_for_session(None)
     return HoldingMapper.to_list_response(holdings)
 
 
@@ -73,13 +42,12 @@ def list_holdings(
 )
 def create_holding(
     request: CreateHoldingRequest,
-    session_id: Annotated[UUID, Depends(validate_session_exists)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> HoldingResponse:
     """Create a new holding."""
     try:
         holding = holding_service.create_holding(
-            session_id=session_id,
+            session_id=None,
             ticker=request.ticker,
             name=request.name,
             asset_class=request.asset_class,
@@ -103,7 +71,6 @@ def create_holding(
 )
 async def upload_holdings(
     file: UploadFile,
-    session_id: Annotated[UUID, Depends(validate_session_exists)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> BulkCreateHoldingsResponse:
     """Upload a CSV file to bulk create holdings."""
@@ -117,7 +84,7 @@ async def upload_holdings(
         content = await file.read()
         csv_content = content.decode("utf-8")
         holdings = holding_service.parse_and_create_holdings_from_csv(
-            session_id, csv_content
+            None, csv_content
         )
         return HoldingMapper.to_bulk_create_response(holdings)
     except UnicodeDecodeError:
@@ -140,23 +107,9 @@ async def upload_holdings(
 def update_holding(
     holding_id: UUID,
     request: UpdateHoldingRequest,
-    session_id: Annotated[UUID, Depends(validate_session_exists)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> HoldingResponse:
     """Update an existing holding."""
-    existing = holding_service.get_holding(holding_id)
-    if existing is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Holding {holding_id} not found",
-        )
-
-    if existing.session_id != session_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Holding does not belong to this session",
-        )
-
     try:
         updated = holding_service.update_holding(
             holding_id=holding_id,
@@ -187,23 +140,9 @@ def update_holding(
 )
 def delete_holding(
     holding_id: UUID,
-    session_id: Annotated[UUID, Depends(validate_session_exists)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> None:
     """Delete a holding."""
-    existing = holding_service.get_holding(holding_id)
-    if existing is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Holding {holding_id} not found",
-        )
-
-    if existing.session_id != session_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Holding does not belong to this session",
-        )
-
     try:
         holding_service.delete_holding(holding_id)
     except HoldingNotFoundError:

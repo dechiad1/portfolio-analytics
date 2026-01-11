@@ -44,3 +44,8 @@ class AnalyticsRepository(ABC):
     def get_fund_metadata_for_tickers(self, tickers: list[str]) -> list[FundMetadata]:
         """Retrieve fund metadata for the given tickers."""
         pass
+
+    @abstractmethod
+    def search_tickers(self, query: str, limit: int = 20) -> list[FundMetadata]:
+        """Search for tickers by name or ticker symbol. Returns up to limit results."""
+        pass

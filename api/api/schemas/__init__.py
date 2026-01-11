@@ -9,7 +9,7 @@ from api.schemas.holding import (
     HoldingListResponse,
     BulkCreateHoldingsResponse,
 )
-from api.schemas.analytics import AnalyticsResponse, HoldingAnalyticsResponse
+from api.schemas.analytics import AnalyticsResponse
 
 __all__ = [
     "SessionResponse",
@@ -20,5 +20,4 @@ __all__ = [
     "HoldingListResponse",
     "BulkCreateHoldingsResponse",
     "AnalyticsResponse",
-    "HoldingAnalyticsResponse",
 ]

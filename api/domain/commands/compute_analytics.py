@@ -13,20 +13,39 @@ from domain.ports.analytics_repository import (
 from domain.ports.holding_repository import HoldingRepository
 
 
-class HoldingAnalytics(BaseModel):
-    """Analytics for a single holding."""
+class TickerAnalytics(BaseModel):
+    """Analytics for a single ticker/holding."""
 
     ticker: str
     name: str
     asset_class: str
     sector: str
-    broker: str
-    purchase_date: date
-    latest_return: Decimal | None = None
-    cumulative_return: Decimal | None = None
-    volatility: Decimal | None = None
-    expense_ratio: Decimal | None = None
-    category: str | None = None
+    total_return_pct: float
+    annualized_return_pct: float
+    volatility_pct: float
+    sharpe_ratio: float
+    vs_benchmark_pct: float
+    expense_ratio: float | None = None
+
+    model_config = {"frozen": True}
+
+
+class AssetClassBreakdown(BaseModel):
+    """Breakdown by asset class."""
+
+    asset_class: str
+    count: int
+    avg_return: float
+
+    model_config = {"frozen": True}
+
+
+class SectorBreakdown(BaseModel):
+    """Breakdown by sector."""
+
+    sector: str
+    count: int
+    avg_return: float
 
     model_config = {"frozen": True}
 
@@ -34,14 +53,14 @@ class HoldingAnalytics(BaseModel):
 class PortfolioAnalytics(BaseModel):
     """Aggregated portfolio analytics."""
 
-    session_id: UUID
-    total_holdings: int
-    holdings: list[HoldingAnalytics]
-    portfolio_avg_return: Decimal | None = None
-    portfolio_avg_volatility: Decimal | None = None
-    asset_class_breakdown: dict[str, int]
-    sector_breakdown: dict[str, int]
-    broker_breakdown: dict[str, int]
+    holdings_count: int
+    avg_total_return_pct: float
+    avg_annualized_return_pct: float
+    avg_sharpe_ratio: float
+    beat_benchmark_count: int
+    holdings: list[TickerAnalytics]
+    asset_class_breakdown: list[AssetClassBreakdown]
+    sector_breakdown: list[SectorBreakdown]
 
     model_config = {"frozen": True}
 
@@ -57,20 +76,20 @@ class ComputeAnalyticsCommand:
         self._holding_repository = holding_repository
         self._analytics_repository = analytics_repository
 
-    def execute(self, session_id: UUID) -> PortfolioAnalytics:
-        """Compute and return analytics for the session's holdings."""
+    def execute(self, session_id: UUID | None) -> PortfolioAnalytics:
+        """Compute and return analytics for all holdings (session_id ignored for now)."""
         holdings = self._holding_repository.get_by_session_id(session_id)
 
         if not holdings:
             return PortfolioAnalytics(
-                session_id=session_id,
-                total_holdings=0,
+                holdings_count=0,
+                avg_total_return_pct=0.0,
+                avg_annualized_return_pct=0.0,
+                avg_sharpe_ratio=0.0,
+                beat_benchmark_count=0,
                 holdings=[],
-                portfolio_avg_return=None,
-                portfolio_avg_volatility=None,
-                asset_class_breakdown={},
-                sector_breakdown={},
-                broker_breakdown={},
+                asset_class_breakdown=[],
+                sector_breakdown=[],
             )
 
         tickers = list({h.ticker for h in holdings})
@@ -83,22 +102,25 @@ class ComputeAnalyticsCommand:
         performance_by_ticker = self._index_performance_by_ticker(performance_data)
         metadata_by_ticker = self._index_metadata_by_ticker(metadata)
 
-        holding_analytics = self._build_holding_analytics(
+        ticker_analytics = self._build_ticker_analytics(
             holdings, performance_by_ticker, metadata_by_ticker
         )
 
-        portfolio_metrics = self._compute_portfolio_metrics(holding_analytics)
-        breakdowns = self._compute_breakdowns(holdings)
+        portfolio_metrics = self._compute_portfolio_metrics(ticker_analytics)
+        asset_class_breakdown = self._compute_asset_class_breakdown(
+            holdings, ticker_analytics
+        )
+        sector_breakdown = self._compute_sector_breakdown(holdings, ticker_analytics)
 
         return PortfolioAnalytics(
-            session_id=session_id,
-            total_holdings=len(holdings),
-            holdings=holding_analytics,
-            portfolio_avg_return=portfolio_metrics["avg_return"],
-            portfolio_avg_volatility=portfolio_metrics["avg_volatility"],
-            asset_class_breakdown=breakdowns["asset_class"],
-            sector_breakdown=breakdowns["sector"],
-            broker_breakdown=breakdowns["broker"],
+            holdings_count=len(holdings),
+            avg_total_return_pct=portfolio_metrics["avg_total_return"],
+            avg_annualized_return_pct=portfolio_metrics["avg_annualized_return"],
+            avg_sharpe_ratio=portfolio_metrics["avg_sharpe"],
+            beat_benchmark_count=portfolio_metrics["beat_benchmark_count"],
+            holdings=ticker_analytics,
+            asset_class_breakdown=asset_class_breakdown,
+            sector_breakdown=sector_breakdown,
         )
 
     def _index_performance_by_ticker(
@@ -117,70 +139,108 @@ class ComputeAnalyticsCommand:
         """Index metadata by ticker."""
         return {m.ticker: m for m in metadata}
 
-    def _build_holding_analytics(
+    def _build_ticker_analytics(
         self,
         holdings: list[Holding],
         performance_by_ticker: dict[str, TickerPerformance],
         metadata_by_ticker: dict[str, FundMetadata],
-    ) -> list[HoldingAnalytics]:
-        """Build analytics for each holding."""
-        result: list[HoldingAnalytics] = []
+    ) -> list[TickerAnalytics]:
+        """Build analytics for each ticker."""
+        result: list[TickerAnalytics] = []
 
         for holding in holdings:
             perf = performance_by_ticker.get(holding.ticker)
             meta = metadata_by_ticker.get(holding.ticker)
 
-            analytics = HoldingAnalytics(
+            # Convert Decimal to float and provide defaults
+            total_return = float(perf.cumulative_return) if perf and perf.cumulative_return else 0.0
+            volatility = float(perf.volatility) if perf and perf.volatility else 0.0
+            expense_ratio = float(meta.expense_ratio) if meta and meta.expense_ratio else None
+
+            # TODO: Calculate actual metrics from DuckDB data
+            # For now, using placeholder values
+            analytics = TickerAnalytics(
                 ticker=holding.ticker,
                 name=holding.name,
                 asset_class=holding.asset_class,
                 sector=holding.sector,
-                broker=holding.broker,
-                purchase_date=holding.purchase_date,
-                latest_return=perf.daily_return if perf else None,
-                cumulative_return=perf.cumulative_return if perf else None,
-                volatility=perf.volatility if perf else None,
-                expense_ratio=meta.expense_ratio if meta else None,
-                category=meta.category if meta else None,
+                total_return_pct=total_return * 100,
+                annualized_return_pct=total_return * 100,  # Simplified
+                volatility_pct=volatility * 100,
+                sharpe_ratio=0.0,  # TODO: Calculate Sharpe ratio
+                vs_benchmark_pct=0.0,  # TODO: Calculate vs benchmark
+                expense_ratio=expense_ratio,
             )
             result.append(analytics)
 
         return result
 
     def _compute_portfolio_metrics(
-        self, holding_analytics: list[HoldingAnalytics]
-    ) -> dict[str, Decimal | None]:
+        self, ticker_analytics: list[TickerAnalytics]
+    ) -> dict[str, float]:
         """Compute portfolio-level aggregate metrics."""
-        returns = [h.cumulative_return for h in holding_analytics if h.cumulative_return]
-        volatilities = [h.volatility for h in holding_analytics if h.volatility]
+        if not ticker_analytics:
+            return {
+                "avg_total_return": 0.0,
+                "avg_annualized_return": 0.0,
+                "avg_sharpe": 0.0,
+                "beat_benchmark_count": 0,
+            }
 
-        avg_return = None
-        if returns:
-            avg_return = sum(returns) / len(returns)
-
-        avg_volatility = None
-        if volatilities:
-            avg_volatility = sum(volatilities) / len(volatilities)
-
-        return {"avg_return": avg_return, "avg_volatility": avg_volatility}
-
-    def _compute_breakdowns(
-        self, holdings: list[Holding]
-    ) -> dict[str, dict[str, int]]:
-        """Compute breakdown counts by various dimensions."""
-        asset_class: dict[str, int] = {}
-        sector: dict[str, int] = {}
-        broker: dict[str, int] = {}
-
-        for holding in holdings:
-            asset_class[holding.asset_class] = (
-                asset_class.get(holding.asset_class, 0) + 1
-            )
-            sector[holding.sector] = sector.get(holding.sector, 0) + 1
-            broker[holding.broker] = broker.get(holding.broker, 0) + 1
+        total_returns = [t.total_return_pct for t in ticker_analytics]
+        annualized_returns = [t.annualized_return_pct for t in ticker_analytics]
+        sharpe_ratios = [t.sharpe_ratio for t in ticker_analytics]
+        beat_benchmark = sum(1 for t in ticker_analytics if t.vs_benchmark_pct > 0)
 
         return {
-            "asset_class": asset_class,
-            "sector": sector,
-            "broker": broker,
+            "avg_total_return": sum(total_returns) / len(total_returns),
+            "avg_annualized_return": sum(annualized_returns) / len(annualized_returns),
+            "avg_sharpe": sum(sharpe_ratios) / len(sharpe_ratios),
+            "beat_benchmark_count": beat_benchmark,
         }
+
+    def _compute_asset_class_breakdown(
+        self, holdings: list[Holding], ticker_analytics: list[TickerAnalytics]
+    ) -> list[AssetClassBreakdown]:
+        """Compute breakdown by asset class with average returns."""
+        analytics_by_ticker = {t.ticker: t for t in ticker_analytics}
+        breakdown: dict[str, list[float]] = {}
+
+        for holding in holdings:
+            analytics = analytics_by_ticker.get(holding.ticker)
+            if analytics:
+                if holding.asset_class not in breakdown:
+                    breakdown[holding.asset_class] = []
+                breakdown[holding.asset_class].append(analytics.total_return_pct)
+
+        return [
+            AssetClassBreakdown(
+                asset_class=asset_class,
+                count=len(returns),
+                avg_return=sum(returns) / len(returns) if returns else 0.0,
+            )
+            for asset_class, returns in breakdown.items()
+        ]
+
+    def _compute_sector_breakdown(
+        self, holdings: list[Holding], ticker_analytics: list[TickerAnalytics]
+    ) -> list[SectorBreakdown]:
+        """Compute breakdown by sector with average returns."""
+        analytics_by_ticker = {t.ticker: t for t in ticker_analytics}
+        breakdown: dict[str, list[float]] = {}
+
+        for holding in holdings:
+            analytics = analytics_by_ticker.get(holding.ticker)
+            if analytics:
+                if holding.sector not in breakdown:
+                    breakdown[holding.sector] = []
+                breakdown[holding.sector].append(analytics.total_return_pct)
+
+        return [
+            SectorBreakdown(
+                sector=sector,
+                count=len(returns),
+                avg_return=sum(returns) / len(returns) if returns else 0.0,
+            )
+            for sector, returns in breakdown.items()
+        ]

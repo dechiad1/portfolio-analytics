@@ -2,49 +2,41 @@ import { api } from '../../shared/api/client';
 import type { Holding, HoldingInput } from '../../shared/types';
 
 /**
- * Fetch all holdings for the current session.
+ * Fetch all holdings.
  */
-export async function fetchHoldings(sessionId: string): Promise<Holding[]> {
-  return api.get<Holding[]>(`/holdings?session_id=${sessionId}`, sessionId);
+export async function fetchHoldings(): Promise<Holding[]> {
+  const response = await api.get<{ holdings: Holding[] }>('/holdings');
+  return response.holdings;
 }
 
 /**
  * Create a new holding.
  */
-export async function createHolding(
-  sessionId: string,
-  holding: HoldingInput
-): Promise<Holding> {
-  return api.post<Holding>('/holdings', holding, sessionId);
+export async function createHolding(holding: HoldingInput): Promise<Holding> {
+  return api.post<Holding>('/holdings', holding);
 }
 
 /**
  * Update an existing holding.
  */
 export async function updateHolding(
-  sessionId: string,
   holdingId: string,
   holding: HoldingInput
 ): Promise<Holding> {
-  return api.put<Holding>(`/holdings/${holdingId}`, holding, sessionId);
+  return api.put<Holding>(`/holdings/${holdingId}`, holding);
 }
 
 /**
  * Delete a holding.
  */
-export async function deleteHolding(
-  sessionId: string,
-  holdingId: string
-): Promise<void> {
-  return api.delete(`/holdings/${holdingId}`, sessionId);
+export async function deleteHolding(holdingId: string): Promise<void> {
+  return api.delete(`/holdings/${holdingId}`);
 }
 
 /**
  * Upload a CSV file of holdings.
  */
-export async function uploadHoldingsCsv(
-  sessionId: string,
-  file: File
-): Promise<Holding[]> {
-  return api.upload<Holding[]>('/holdings/upload', file, 'file', sessionId);
+export async function uploadHoldingsCsv(file: File): Promise<Holding[]> {
+  const response = await api.upload<{ holdings: Holding[] }>('/holdings/upload', file, 'file');
+  return response.holdings;
 }

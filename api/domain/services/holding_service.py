@@ -36,7 +36,7 @@ class HoldingService:
 
     def create_holding(
         self,
-        session_id: UUID,
+        session_id: UUID | None,
         ticker: str,
         name: str,
         asset_class: str,
@@ -64,8 +64,8 @@ class HoldingService:
         """Retrieve a holding by ID."""
         return self._repository.get_by_id(holding_id)
 
-    def get_holdings_for_session(self, session_id: UUID) -> list[Holding]:
-        """Retrieve all holdings for a session."""
+    def get_holdings_for_session(self, session_id: UUID | None) -> list[Holding]:
+        """Retrieve all holdings for a session. If session_id is None, return all holdings."""
         return self._repository.get_by_session_id(session_id)
 
     def update_holding(
@@ -104,13 +104,13 @@ class HoldingService:
         self._repository.delete(holding_id)
 
     def parse_and_create_holdings_from_csv(
-        self, session_id: UUID, csv_content: str
+        self, session_id: UUID | None, csv_content: str
     ) -> list[Holding]:
         """Parse CSV content and create holdings in bulk."""
         holdings = self._parse_csv(session_id, csv_content)
         return self._repository.bulk_create(holdings)
 
-    def _parse_csv(self, session_id: UUID, csv_content: str) -> list[Holding]:
+    def _parse_csv(self, session_id: UUID | None, csv_content: str) -> list[Holding]:
         """Parse CSV content into Holding objects."""
         reader = csv.DictReader(StringIO(csv_content))
 

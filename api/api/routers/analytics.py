@@ -1,44 +1,14 @@
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 
 from domain.commands.compute_analytics import ComputeAnalyticsCommand
-from domain.services.session_service import SessionService
-from api.schemas.analytics import AnalyticsResponse
+from domain.ports.analytics_repository import AnalyticsRepository
+from api.schemas.analytics import AnalyticsResponse, TickerSearchResponse, TickerSearchResult
 from api.mappers.holding_mapper import HoldingMapper
-from dependencies import get_compute_analytics_command, get_session_service
+from dependencies import get_compute_analytics_command, get_analytics_repository
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
-
-
-def get_session_id(
-    x_session_id: Annotated[UUID | None, Header()] = None,
-    session_id: Annotated[UUID | None, Query()] = None,
-) -> UUID:
-    """Extract session ID from header or query parameter."""
-    resolved_id = x_session_id or session_id
-    if resolved_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session ID required via X-Session-ID header or session_id query parameter",
-        )
-    return resolved_id
-
-
-def validate_session_exists(
-    session_id: Annotated[UUID, Depends(get_session_id)],
-    session_service: Annotated[SessionService, Depends(get_session_service)],
-) -> UUID:
-    """Validate that the session exists."""
-    session = session_service.get_session(session_id)
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found",
-        )
-    session_service.touch_session(session_id)
-    return session_id
 
 
 @router.get(
@@ -47,9 +17,35 @@ def validate_session_exists(
     summary="Get portfolio analytics",
 )
 def get_analytics(
-    session_id: Annotated[UUID, Depends(validate_session_exists)],
     command: Annotated[ComputeAnalyticsCommand, Depends(get_compute_analytics_command)],
 ) -> AnalyticsResponse:
-    """Compute and return analytics for the session's holdings."""
-    analytics = command.execute(session_id)
+    """Compute and return analytics for all holdings."""
+    analytics = command.execute(None)
     return HoldingMapper.analytics_to_response(analytics)
+
+
+@router.get(
+    "/tickers/search",
+    response_model=TickerSearchResponse,
+    summary="Search for tickers",
+)
+def search_tickers(
+    q: Annotated[str, Query(min_length=1, max_length=50, description="Search query for ticker or name")],
+    analytics_repo: Annotated[AnalyticsRepository, Depends(get_analytics_repository)],
+    limit: Annotated[int, Query(ge=1, le=100, description="Maximum number of results")] = 20,
+) -> TickerSearchResponse:
+    """Search for tickers by symbol or name."""
+    results = analytics_repo.search_tickers(q, limit)
+
+    return TickerSearchResponse(
+        results=[
+            TickerSearchResult(
+                ticker=fund.ticker,
+                name=fund.name,
+                asset_class=fund.asset_class,
+                category=fund.category,
+            )
+            for fund in results
+        ],
+        count=len(results),
+    )

@@ -23,9 +23,9 @@ wheels/
 *.egg
 
 # DBT
-dbt/target/
-dbt/dbt_packages/
-dbt/logs/
+portfolio_analytics/dbt/target
+portfolio_analytics/dbt/dbt_packages/
+portfolio_analytics/dbt/logs/
 
 # DuckDB
 *.duckdb

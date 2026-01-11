@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Holding, HoldingInput } from '../../shared/types';
-import { useSession } from '../../shared/hooks/useSession';
 import { ApiClientError } from '../../shared/api/client';
 import {
   fetchHoldings,
@@ -40,20 +39,17 @@ interface HoldingsState {
  * Hook to manage holdings state and operations.
  */
 export function useHoldingsState(): HoldingsState {
-  const { sessionId } = useSession();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
 
   const loadHoldings = useCallback(async () => {
-    if (!sessionId) return;
-
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await fetchHoldings(sessionId);
+      const data = await fetchHoldings();
       setHoldings(data);
     } catch (err) {
       const message = err instanceof ApiClientError
@@ -63,7 +59,7 @@ export function useHoldingsState(): HoldingsState {
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     loadHoldings();
@@ -74,13 +70,11 @@ export function useHoldingsState(): HoldingsState {
   }, [loadHoldings]);
 
   const addHolding = useCallback(async (holding: HoldingInput): Promise<boolean> => {
-    if (!sessionId) return false;
-
     setIsMutating(true);
     setError(null);
 
     try {
-      const newHolding = await createHolding(sessionId, holding);
+      const newHolding = await createHolding(holding);
       setHoldings((prev) => [...prev, newHolding]);
       return true;
     } catch (err) {
@@ -92,17 +86,15 @@ export function useHoldingsState(): HoldingsState {
     } finally {
       setIsMutating(false);
     }
-  }, [sessionId]);
+  }, []);
 
   const editHolding = useCallback(
     async (holdingId: string, holding: HoldingInput): Promise<boolean> => {
-      if (!sessionId) return false;
-
       setIsMutating(true);
       setError(null);
 
       try {
-        const updatedHolding = await updateHolding(sessionId, holdingId, holding);
+        const updatedHolding = await updateHolding(holdingId, holding);
         setHoldings((prev) =>
           prev.map((h) => (h.id === holdingId ? updatedHolding : h))
         );
@@ -117,18 +109,16 @@ export function useHoldingsState(): HoldingsState {
         setIsMutating(false);
       }
     },
-    [sessionId]
+    []
   );
 
   const removeHolding = useCallback(
     async (holdingId: string): Promise<boolean> => {
-      if (!sessionId) return false;
-
       setIsMutating(true);
       setError(null);
 
       try {
-        await deleteHolding(sessionId, holdingId);
+        await deleteHolding(holdingId);
         setHoldings((prev) => prev.filter((h) => h.id !== holdingId));
         return true;
       } catch (err) {
@@ -141,20 +131,16 @@ export function useHoldingsState(): HoldingsState {
         setIsMutating(false);
       }
     },
-    [sessionId]
+    []
   );
 
   const uploadCsv = useCallback(
     async (file: File): Promise<{ success: boolean; count?: number; error?: string }> => {
-      if (!sessionId) {
-        return { success: false, error: 'No session available' };
-      }
-
       setIsMutating(true);
       setError(null);
 
       try {
-        const newHoldings = await uploadHoldingsCsv(sessionId, file);
+        const newHoldings = await uploadHoldingsCsv(file);
         setHoldings((prev) => [...prev, ...newHoldings]);
         return { success: true, count: newHoldings.length };
       } catch (err) {
@@ -167,7 +153,7 @@ export function useHoldingsState(): HoldingsState {
         setIsMutating(false);
       }
     },
-    [sessionId]
+    []
   );
 
   const clearError = useCallback(() => {

@@ -74,11 +74,11 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
         query = f"""
             SELECT
                 ticker,
-                name,
+                fund_name,
                 asset_class,
                 category,
-                expense_ratio,
-                inception_date
+                expense_ratio_pct,
+                fund_inception_date
             FROM main_marts.dim_funds
             WHERE ticker IN ({placeholders})
         """
@@ -86,6 +86,56 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
         with self._get_connection() as conn:
             try:
                 result = conn.execute(query, tickers).fetchall()
+            except duckdb.CatalogException:
+                return []
+
+        return [
+            FundMetadata(
+                ticker=row[0],
+                name=row[1],
+                asset_class=row[2],
+                category=row[3],
+                expense_ratio=(
+                    Decimal(str(row[4])) if row[4] is not None else None
+                ),
+                inception_date=row[5],
+            )
+            for row in result
+        ]
+
+    def search_tickers(self, query: str, limit: int = 20) -> list[FundMetadata]:
+        """Search for tickers by name or ticker symbol."""
+        if not query:
+            return []
+
+        search_term = f"%{query.upper()}%"
+
+        query_sql = """
+            SELECT
+                ticker,
+                fund_name,
+                asset_class,
+                category,
+                expense_ratio_pct,
+                fund_inception_date
+            FROM main_marts.dim_funds
+            WHERE UPPER(ticker) LIKE ? OR UPPER(fund_name) LIKE ?
+            ORDER BY
+                CASE
+                    WHEN UPPER(ticker) = ? THEN 1
+                    WHEN UPPER(ticker) LIKE ? THEN 2
+                    ELSE 3
+                END,
+                ticker
+            LIMIT ?
+        """
+
+        with self._get_connection() as conn:
+            try:
+                result = conn.execute(
+                    query_sql,
+                    [search_term, search_term, query.upper(), f"{query.upper()}%", limit]
+                ).fetchall()
             except duckdb.CatalogException:
                 return []
 
