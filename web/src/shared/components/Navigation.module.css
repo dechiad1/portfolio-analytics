@@ -44,9 +44,60 @@
   display: none;
 }
 
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--color-border);
+}
+
+.userEmail {
+  display: none;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.logoutButton:hover {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+  border-color: var(--color-error);
+}
+
+.logoutLabel {
+  display: none;
+}
+
 /* Tablet and up */
 @media (min-width: 768px) {
   .label {
+    display: inline;
+  }
+
+  .userEmail {
+    display: block;
+  }
+
+  .logoutLabel {
     display: inline;
   }
 }

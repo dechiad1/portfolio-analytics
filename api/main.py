@@ -2,7 +2,13 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import sessions_router, holdings_router, analytics_router
+from api.routers import (
+    sessions_router,
+    holdings_router,
+    analytics_router,
+    auth_router,
+    portfolios_router,
+)
 from dependencies import load_config
 
 
@@ -13,7 +19,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Portfolio Analytics API",
         description="Backend API for portfolio analytics platform",
-        version="1.0.0",
+        version="2.0.0",
     )
 
     app.add_middleware(
@@ -24,6 +30,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Auth routes (no auth required)
+    app.include_router(auth_router)
+
+    # Portfolio routes (auth required)
+    app.include_router(portfolios_router)
+
+    # Legacy routes (to be deprecated)
     app.include_router(sessions_router)
     app.include_router(holdings_router)
     app.include_router(analytics_router)

@@ -13,3 +13,12 @@ server:
   port: 8000
   cors_origins:
     - https://dev.portfolio-analytics.example.com
+
+auth:
+  jwt_secret: ${JWT_SECRET}
+  jwt_algorithm: HS256
+  token_expiry_hours: 24
+
+llm:
+  anthropic_api_key: ${ANTHROPIC_API_KEY}
+  model: claude-sonnet-4-20250514

@@ -14,3 +14,12 @@ server:
   cors_origins:
     - http://localhost:3000
     - http://localhost:5173
+
+auth:
+  jwt_secret: ${JWT_SECRET}
+  jwt_algorithm: HS256
+  token_expiry_hours: 24
+
+llm:
+  anthropic_api_key: ${ANTHROPIC_API_KEY}
+  model: claude-sonnet-4-20250514

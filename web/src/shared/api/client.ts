@@ -11,6 +11,11 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const SESSION_STORAGE_KEY = 'portfolio_analytics_session_id';
 
 /**
+ * Storage key for JWT token.
+ */
+const TOKEN_STORAGE_KEY = 'portfolio_analytics_token';
+
+/**
  * Get the stored session ID from localStorage.
  */
 export function getStoredSessionId(): string | null {
@@ -29,6 +34,27 @@ export function setStoredSessionId(sessionId: string): void {
  */
 export function clearStoredSessionId(): void {
   localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+/**
+ * Get the stored JWT token from localStorage.
+ */
+export function getStoredToken(): string | null {
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+/**
+ * Store the JWT token in localStorage.
+ */
+export function setStoredToken(token: string): void {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+/**
+ * Clear the stored JWT token from localStorage.
+ */
+export function clearStoredToken(): void {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
 /**
@@ -53,7 +79,9 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   sessionId?: string | null;
+  token?: string | null;
   headers?: Record<string, string>;
+  skipAuth?: boolean;
 }
 
 /**
@@ -81,7 +109,7 @@ export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { method = 'GET', body, sessionId, headers: customHeaders = {} } = options;
+  const { method = 'GET', body, sessionId, token, headers: customHeaders = {}, skipAuth = false } = options;
 
   const headers: Record<string, string> = {
     ...customHeaders,
@@ -90,6 +118,14 @@ export async function apiRequest<T>(
   // Add session ID header if provided
   if (sessionId) {
     headers['X-Session-ID'] = sessionId;
+  }
+
+  // Add Authorization header if token provided or from storage (unless skipAuth)
+  if (!skipAuth) {
+    const authToken = token ?? getStoredToken();
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
   }
 
   // Add content-type for JSON body
@@ -136,31 +172,60 @@ export async function apiRequest<T>(
 }
 
 /**
+ * Options for API convenience methods.
+ */
+interface ApiOptions {
+  sessionId?: string | null;
+  token?: string | null;
+  skipAuth?: boolean;
+}
+
+/**
  * Convenience methods for common HTTP operations.
  */
 export const api = {
-  get: <T>(endpoint: string, sessionId?: string | null) =>
-    apiRequest<T>(endpoint, { method: 'GET', sessionId }),
+  get: <T>(endpoint: string, options?: ApiOptions | string | null) => {
+    // Support legacy sessionId parameter
+    const opts = typeof options === 'string' || options === null
+      ? { sessionId: options }
+      : options;
+    return apiRequest<T>(endpoint, { method: 'GET', ...opts });
+  },
 
-  post: <T>(endpoint: string, body?: unknown, sessionId?: string | null) =>
-    apiRequest<T>(endpoint, { method: 'POST', body, sessionId }),
+  post: <T>(endpoint: string, body?: unknown, options?: ApiOptions | string | null) => {
+    const opts = typeof options === 'string' || options === null
+      ? { sessionId: options }
+      : options;
+    return apiRequest<T>(endpoint, { method: 'POST', body, ...opts });
+  },
 
-  put: <T>(endpoint: string, body?: unknown, sessionId?: string | null) =>
-    apiRequest<T>(endpoint, { method: 'PUT', body, sessionId }),
+  put: <T>(endpoint: string, body?: unknown, options?: ApiOptions | string | null) => {
+    const opts = typeof options === 'string' || options === null
+      ? { sessionId: options }
+      : options;
+    return apiRequest<T>(endpoint, { method: 'PUT', body, ...opts });
+  },
 
-  delete: <T>(endpoint: string, sessionId?: string | null) =>
-    apiRequest<T>(endpoint, { method: 'DELETE', sessionId }),
+  delete: <T>(endpoint: string, options?: ApiOptions | string | null) => {
+    const opts = typeof options === 'string' || options === null
+      ? { sessionId: options }
+      : options;
+    return apiRequest<T>(endpoint, { method: 'DELETE', ...opts });
+  },
 
   /**
    * Upload a file using multipart form data.
    */
-  upload: <T>(endpoint: string, file: File, fieldName: string, sessionId?: string | null) => {
+  upload: <T>(endpoint: string, file: File, fieldName: string, options?: ApiOptions | string | null) => {
+    const opts = typeof options === 'string' || options === null
+      ? { sessionId: options }
+      : options;
     const formData = new FormData();
     formData.append(fieldName, file);
     return apiRequest<T>(endpoint, {
       method: 'POST',
       body: formData,
-      sessionId,
+      ...opts,
     });
   },
 };

@@ -42,7 +42,7 @@ export function AddHoldingForm({
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof HoldingInput, string>> = {};
