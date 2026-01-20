@@ -1,11 +1,12 @@
 -- Staging model: Benchmark and risk-free rate data
+-- Risk-free rates now derived from Treasury yields (10Y) via stg_risk_free_rates
 
 with benchmark as (
     select * from {{ source('raw', 'raw_benchmark_prices') }}
 ),
 
 risk_free as (
-    select * from {{ source('raw', 'raw_risk_free_rates') }}
+    select * from {{ ref('stg_risk_free_rates') }}
 ),
 
 joined as (

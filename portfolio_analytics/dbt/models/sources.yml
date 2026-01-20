@@ -1,12 +1,15 @@
 version: 2
 
 sources:
+  # =============================================================================
+  # RAW MARKET DATA (loaded by Python ingestion scripts)
+  # =============================================================================
   - name: raw
-    description: Raw data tables loaded from Python ingestion scripts
+    description: Raw market data tables loaded from Python ingestion scripts
     schema: main
     tables:
       - name: raw_prices
-        description: Historical price data for all holdings
+        description: Historical price data for equities/ETFs
         columns:
           - name: date
             description: Trading date
@@ -22,7 +25,7 @@ sources:
             description: Closing price (adjusted)
           - name: volume
             description: Trading volume
-      
+
       - name: raw_benchmark_prices
         description: Benchmark (S&P 500) price data
         columns:
@@ -32,16 +35,16 @@ sources:
             description: Benchmark ticker (e.g., VFIAX)
           - name: benchmark_price
             description: Benchmark closing price
-      
-      - name: raw_risk_free_rates
-        description: Risk-free rate data (10Y Treasury proxy)
+
+      - name: raw_treasury_yields
+        description: Treasury yield curve data from FRED for bond pricing
         columns:
           - name: date
             description: Date
-          - name: risk_free_rate
-            description: Annual risk-free rate
-          - name: risk_free_rate_daily
-            description: Daily risk-free rate
+          - name: tenor
+            description: Yield curve tenor (2Y, 5Y, 10Y, 30Y)
+          - name: yield_rate
+            description: Yield rate as decimal (e.g., 0.0425 = 4.25%)
 
       - name: raw_fund_metadata
         description: Fund metadata from Yahoo Finance API
@@ -51,9 +54,9 @@ sources:
           - name: fund_name
             description: Official fund name
           - name: expense_ratio
-            description: Annual expense ratio (e.g., 0.0003 = 0.03%)
+            description: Annual expense ratio
           - name: fund_family
-            description: Fund family/provider (e.g., Vanguard)
+            description: Fund family/provider
           - name: category
             description: Fund category/classification
           - name: fund_inception_date
@@ -61,7 +64,7 @@ sources:
           - name: total_assets
             description: Total assets under management
           - name: currency
-            description: Fund currency (e.g., USD)
+            description: Fund currency
           - name: exchange
             description: Exchange where fund is traded
           - name: quote_type
@@ -72,3 +75,162 @@ sources:
             description: Asset allocation breakdown
           - name: top_sectors
             description: Top sector weightings
+
+  # =============================================================================
+  # POSTGRES REPLICATED DATA (transactional system of record)
+  # =============================================================================
+  - name: postgres
+    description: Replicated tables from Postgres transactional database
+    schema: main
+    tables:
+      - name: pg_portfolio
+        description: Portfolio/account ownership
+        columns:
+          - name: portfolio_id
+            description: Primary key (UUID)
+          - name: user_id
+            description: Owner user ID
+          - name: name
+            description: Portfolio name
+          - name: base_currency
+            description: Base currency (e.g., USD)
+          - name: created_at
+            description: Creation timestamp
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: pg_security_registry
+        description: Canonical security identity
+        columns:
+          - name: security_id
+            description: Primary key (UUID)
+          - name: asset_type
+            description: Asset type (EQUITY, ETF, BOND, CASH)
+          - name: currency
+            description: Security currency
+          - name: display_name
+            description: Display name
+          - name: is_active
+            description: Whether security is active
+          - name: created_at
+            description: Creation timestamp
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: pg_security_identifier
+        description: Multiple identifiers per security (TICKER, CUSIP, ISIN)
+        columns:
+          - name: id
+            description: Primary key (UUID)
+          - name: security_id
+            description: Foreign key to security_registry
+          - name: id_type
+            description: Identifier type (TICKER, CUSIP, ISIN)
+          - name: id_value
+            description: Identifier value
+          - name: source
+            description: Source of identifier
+          - name: is_primary
+            description: Whether this is the primary identifier
+          - name: created_at
+            description: Creation timestamp
+
+      - name: pg_equity_details
+        description: Equity/ETF subtype details
+        columns:
+          - name: security_id
+            description: Primary key / foreign key to security_registry
+          - name: ticker
+            description: Ticker symbol
+          - name: exchange
+            description: Exchange code
+          - name: country
+            description: Country code
+          - name: sector
+            description: Sector classification
+          - name: industry
+            description: Industry classification
+          - name: created_at
+            description: Creation timestamp
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: pg_bond_details
+        description: Bond subtype details (fixed and zero coupon)
+        columns:
+          - name: security_id
+            description: Primary key / foreign key to security_registry
+          - name: issuer_name
+            description: Bond issuer name
+          - name: coupon_type
+            description: Coupon type (FIXED, ZERO)
+          - name: coupon_rate
+            description: Annual coupon rate (nullable for ZERO)
+          - name: payment_frequency
+            description: Coupon payment frequency
+          - name: day_count_convention
+            description: Day count convention for accrual
+          - name: issue_date
+            description: Bond issue date
+          - name: maturity_date
+            description: Bond maturity date
+          - name: par_value
+            description: Par/face value (typically 100)
+          - name: price_quote_convention
+            description: How prices are quoted
+          - name: created_at
+            description: Creation timestamp
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: pg_transaction_ledger
+        description: Append-only transaction ledger (paper trades + cash flows)
+        columns:
+          - name: txn_id
+            description: Primary key (UUID)
+          - name: portfolio_id
+            description: Foreign key to portfolio
+          - name: event_ts
+            description: Event timestamp
+          - name: txn_type
+            description: Transaction type (BUY, SELL, DEPOSIT, WITHDRAW, FEE, DIVIDEND, COUPON)
+          - name: security_id
+            description: Foreign key to security_registry (nullable for cash events)
+          - name: quantity
+            description: Quantity (shares, face amount, or currency amount)
+          - name: price
+            description: Price (nullable for cash events)
+          - name: fees
+            description: Transaction fees
+          - name: currency
+            description: Transaction currency
+          - name: notes
+            description: Optional notes
+          - name: created_at
+            description: Creation timestamp
+
+      - name: pg_position_current
+        description: Current positions (materialized from ledger)
+        columns:
+          - name: portfolio_id
+            description: Foreign key to portfolio
+          - name: security_id
+            description: Foreign key to security_registry
+          - name: quantity
+            description: Current quantity held
+          - name: avg_cost
+            description: Simple average cost basis
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: pg_cash_balance
+        description: Cash balances per portfolio per currency
+        columns:
+          - name: portfolio_id
+            description: Foreign key to portfolio
+          - name: currency
+            description: Currency code
+          - name: balance
+            description: Current cash balance
+          - name: updated_at
+            description: Last update timestamp

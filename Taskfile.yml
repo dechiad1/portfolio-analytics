@@ -1,59 +1,52 @@
 version: '3'
 
+dotenv: ['.env']
+
 vars:
   CLAUDE_DIR: "{{.ROOT_DIR}}/.claude"
 
 tasks:
+  # =============================================================================
+  # COMPLETE SETUP (one-command setup for new users)
+  # =============================================================================
+  setup:
+    desc: "Complete project setup: Docker, migrations, seeds, data fetch, and dbt"
+    cmds:
+      - task: docker:up
+      - echo "Waiting for PostgreSQL to be ready..."
+      - sleep 5
+      - task: db:migrate
+      - task: db:seed
+      - task: replicate
+      - task: fetch
+      - task: dbt
+      - echo ""
+      - echo "=========================================="
+      - echo "Setup complete! You can now run:"
+      - echo "  task run:ui   - Start the Streamlit dashboard"
+      - echo "  task run:api  - Start the API server"
+      - echo "=========================================="
+
+  setup:local:
+    desc: Complete local development setup (start Docker, run migrations)
+    cmds:
+      - task: docker:up
+      - echo "Waiting for PostgreSQL to be ready..."
+      - sleep 5
+      - task: db:migrate
+      - echo "Local setup complete! Database is ready."
+
+  # =============================================================================
+  # INSTALL
+  # =============================================================================
   install:
     desc: Install project dependencies using Poetry
     cmds:
       - poetry install
 
-  fetch:
-    desc: Fetch historical price data and benchmark data
-    deps: [fetch:prices, fetch:benchmarks]
-
-  fetch:prices:
-    desc: Fetch historical price data only
-    cmds:
-      - poetry run python portfolio_analytics/scripts/ingest_prices.py
-
-  fetch:benchmarks:
-    desc: Fetch benchmark data only
-    cmds:
-      - poetry run python portfolio_analytics/scripts/ingest_benchmarks.py
-
-  dbt:
-    desc: Run all DBT operations (seed and run)
-    dir: portfolio_analytics/dbt
-    cmds:
-      - poetry run dbt seed
-      - poetry run dbt run
-
-  dbt:seed:
-    desc: Load holdings data into the database
-    dir: portfolio_analytics/dbt
-    cmds:
-      - poetry run dbt seed
-
-  dbt:run:
-    desc: Run all DBT transformations
-    dir: portfolio_analytics/dbt
-    cmds:
-      - poetry run dbt run
-
-  dbt:test:
-    desc: Run DBT tests
-    dir: portfolio_analytics/dbt
-    cmds:
-      - poetry run dbt test
-
-  run:ui:
-    desc: Start the Streamlit dashboard
-    cmds:
-      - poetry run streamlit run portfolio_analytics/app.py
-
-  # Database migration tasks
+  # =============================================================================
+  # DATABASE OPERATIONS (Postgres)
+  # =============================================================================
   db:migrate:
     desc: Run pending database migrations
     dir: api
@@ -84,7 +77,111 @@ tasks:
     cmds:
       - poetry run alembic current
 
-  # Docker services
+  db:seed:
+    desc: Seed Postgres with common securities (ETFs, stocks, Treasury bonds)
+    dir: api
+    cmds:
+      - poetry run python scripts/seed_securities.py
+
+  # =============================================================================
+  # DATA REPLICATION (Postgres -> DuckDB)
+  # =============================================================================
+  replicate:
+    desc: Replicate Postgres transactional data to DuckDB for OLAP
+    cmds:
+      - poetry run python portfolio_analytics/scripts/replicate_postgres_to_duckdb.py
+
+  # =============================================================================
+  # VENDOR DATA FETCH
+  # =============================================================================
+  fetch:
+    desc: Fetch all vendor data (prices, benchmarks, treasury yields)
+    deps: [fetch:prices, fetch:benchmarks, fetch:treasury-yields, fetch:fund-metadata]
+
+  fetch:prices:
+    desc: Fetch historical equity/ETF price data from Yahoo Finance
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_prices.py
+
+  fetch:benchmarks:
+    desc: Fetch benchmark data (S&P 500, risk-free rate)
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_benchmarks.py
+
+  fetch:treasury-yields:
+    desc: Fetch Treasury yield curve data from FRED (requires FRED_API_KEY)
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_treasury_yields.py
+
+  fetch:fund-metadata:
+    desc: Fetch fund metadata from Yahoo Finance
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_fund_metadata.py
+
+  # =============================================================================
+  # DBT TRANSFORMATIONS
+  # =============================================================================
+  dbt:
+    desc: Run all DBT operations (seed and run)
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt seed
+      - poetry run dbt run
+
+  dbt:seed:
+    desc: Load seed data (holdings CSV) into DuckDB
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt seed
+
+  dbt:run:
+    desc: Run all DBT transformations
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt run
+
+  dbt:test:
+    desc: Run DBT tests
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt test
+
+  dbt:docs:
+    desc: Generate and serve DBT documentation
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt docs generate
+      - poetry run dbt docs serve
+
+  dbt:clean:
+    desc: Clean DBT artifacts
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt clean
+
+  # =============================================================================
+  # RUN APPLICATIONS
+  # =============================================================================
+  run:ui:
+    desc: Start the Streamlit dashboard
+    cmds:
+      - poetry run streamlit run portfolio_analytics/app.py
+
+  run:api:
+    desc: Start the FastAPI backend server
+    dir: api
+    cmds:
+      - poetry run uvicorn main:app --reload --port 8000
+
+  run:web:
+    desc: Start the React frontend dev server
+    dir: web
+    cmds:
+      - npm run dev
+
+  # =============================================================================
+  # DOCKER SERVICES
+  # =============================================================================
   docker:up:
     desc: Start all Docker services (PostgreSQL)
     dir: docker
@@ -101,26 +198,41 @@ tasks:
     desc: View Docker service logs
     dir: docker
     cmds:
-      - docker compose logs
+      - docker compose logs -f
 
   docker:reset:
-    desc: Stop services and remove all data volumes
+    desc: Stop services and remove all data volumes (DESTRUCTIVE)
     dir: docker
     cmds:
       - docker compose down -v
-      - echo "All data volumes removed. Run 'task docker:up' to start fresh."
+      - echo "All data volumes removed. Run 'task setup' to start fresh."
 
-  # Complete local setup
-  setup:local:
-    desc: Complete local development setup (start Docker, run migrations)
+  # =============================================================================
+  # DEVELOPMENT UTILITIES
+  # =============================================================================
+  refresh:
+    desc: Refresh all data (replicate from Postgres, fetch vendor data, run dbt)
     cmds:
-      - task: docker:up
-      - echo "Waiting for PostgreSQL to be ready..."
-      - sleep 5
-      - task: db:migrate
-      - echo "Local setup complete! Database is ready."
+      - task: replicate
+      - task: fetch
+      - task: dbt
 
-  # Claude configuration sync
+  refresh:olap:
+    desc: Refresh OLAP only (replicate from Postgres, run dbt)
+    cmds:
+      - task: replicate
+      - task: dbt:run
+
+  clean:
+    desc: Clean all generated artifacts (DuckDB, dbt artifacts)
+    cmds:
+      - rm -f portfolio_analytics/data/portfolio.duckdb
+      - task: dbt:clean
+      - echo "Cleaned all generated artifacts"
+
+  # =============================================================================
+  # CLAUDE CONFIGURATION
+  # =============================================================================
   claude:sync:
     desc: Copy Claude agents and reference files into project .claude directory
     cmds:
@@ -139,3 +251,11 @@ tasks:
           echo "~/.claude/reference directory not found"
         fi
     silent: false
+
+  # =============================================================================
+  # HELP
+  # =============================================================================
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list

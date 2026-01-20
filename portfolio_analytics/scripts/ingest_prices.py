@@ -24,7 +24,7 @@ def fetch_prices(tickers, start_date, end_date):
     Returns:
         DataFrame with columns: date, ticker, price, volume
     """
-    print(f"\n📊 Fetching price data for {len(tickers)} tickers...")
+    print(f"\n Fetching price data for {len(tickers)} tickers...")
     print(f"Date range: {start_date} to {end_date}")
     print("-" * 60)
     
@@ -44,7 +44,7 @@ def fetch_prices(tickers, start_date, end_date):
             )
             
             if data.empty:
-                print("❌ No data available")
+                print("No data available")
                 continue
 
             # Reset index to make date a column
@@ -69,7 +69,7 @@ def fetch_prices(tickers, start_date, end_date):
             print(f"✓ Got {len(df)} days of data")
             
         except Exception as e:
-            print(f"❌ Error: {str(e)}")
+            print(f"Error: {str(e)}")
             continue
     
     if not all_data:
@@ -92,7 +92,7 @@ def load_to_duckdb(df, table_name='raw_prices'):
         df: DataFrame to load
         table_name: Name of the table to create/replace
     """
-    print(f"\n💾 Loading data to DuckDB...")
+    print(f"\n Loading data to DuckDB...")
     
     db_path = get_db_path()
     print(f"Database: {db_path}")
@@ -131,13 +131,9 @@ def main():
         print("\n" + "=" * 60)
         print("✓ SUCCESS: Price data ingestion complete!")
         print("=" * 60)
-        print("\nNext steps:")
-        print("1. Run: python scripts/ingest_benchmarks.py")
-        print("2. Run: cd dbt && dbt seed && dbt run")
-        print("3. View: streamlit run app.py")
         
     except Exception as e:
-        print(f"\n❌ ERROR: {str(e)}")
+        print(f"\n ERROR: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
