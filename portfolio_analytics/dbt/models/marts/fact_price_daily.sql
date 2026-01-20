@@ -1,6 +1,6 @@
 -- Fact: Daily prices for all securities
 -- Equities/ETFs: closing price from market data
--- Bonds: clean price (% of par) - sourced from vendor or derived from yields
+-- Bonds: clean price derived from Treasury yield curve
 
 {{
     config(
@@ -25,18 +25,14 @@ equity_prices as (
         and ds.asset_type in ('EQUITY', 'ETF')
 ),
 
--- Bond prices from raw bond prices (when available)
--- Falls back to last known price or par if no price data
+-- Treasury bond prices derived from yield curve
 bond_prices as (
     select
-        cast(rbp.date as date) as as_of_date,
-        ds.security_id,
-        rbp.clean_price as price,
-        'market_data' as price_source
-    from {{ source('raw', 'raw_bond_prices') }} rbp
-    inner join dim_security ds
-        on rbp.cusip = ds.primary_id_value
-        and ds.asset_type = 'BOND'
+        as_of_date,
+        security_id,
+        clean_price as price,
+        price_source
+    from {{ ref('int_treasury_bond_prices') }}
 ),
 
 -- Union all price sources

@@ -36,16 +36,6 @@ sources:
           - name: benchmark_price
             description: Benchmark closing price
 
-      - name: raw_risk_free_rates
-        description: Risk-free rate data (Treasury yields from FRED)
-        columns:
-          - name: date
-            description: Date
-          - name: risk_free_rate
-            description: Annual risk-free rate
-          - name: risk_free_rate_daily
-            description: Daily risk-free rate
-
       - name: raw_treasury_yields
         description: Treasury yield curve data from FRED for bond pricing
         columns:
@@ -55,18 +45,6 @@ sources:
             description: Yield curve tenor (2Y, 5Y, 10Y, 30Y)
           - name: yield_rate
             description: Yield rate as decimal (e.g., 0.0425 = 4.25%)
-
-      - name: raw_bond_prices
-        description: Bond clean prices (derived from yields or from vendor feed)
-        columns:
-          - name: date
-            description: Price date
-          - name: cusip
-            description: Bond CUSIP identifier
-          - name: clean_price
-            description: Clean price as % of par (e.g., 98.50)
-          - name: price_source
-            description: Source of the price (derived, vendor, user)
 
       - name: raw_fund_metadata
         description: Fund metadata from Yahoo Finance API

@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 vars:
   CLAUDE_DIR: "{{.ROOT_DIR}}/.claude"
 
@@ -94,7 +96,7 @@ tasks:
   # =============================================================================
   fetch:
     desc: Fetch all vendor data (prices, benchmarks, treasury yields)
-    deps: [fetch:prices, fetch:benchmarks, fetch:treasury-yields]
+    deps: [fetch:prices, fetch:benchmarks, fetch:treasury-yields, fetch:fund-metadata]
 
   fetch:prices:
     desc: Fetch historical equity/ETF price data from Yahoo Finance

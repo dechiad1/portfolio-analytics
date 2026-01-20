@@ -15,10 +15,8 @@ from pathlib import Path
 START_DATE = '2022-01-01'  # Adjust to your investment start date
 END_DATE = datetime.now().strftime('%Y-%m-%d')  # Today
 
-# Risk-free rate assumption (annual)
-# This is used for Sharpe ratio calculations
-# Typical values: 3-5% depending on treasury rates
-RISK_FREE_RATE = 0.03  # 3%
+# Note: Risk-free rate is now sourced from FRED Treasury yields (10Y)
+# See ingest_treasury_yields.py and stg_risk_free_rates.sql
 
 # ============================================================================
 # DATABASE SETTINGS
@@ -103,16 +101,13 @@ def get_db_path():
 def validate_config():
     """Validate configuration settings"""
     errors = []
-    
+
     if not START_DATE:
         errors.append("START_DATE must be set")
-    
-    if RISK_FREE_RATE < 0 or RISK_FREE_RATE > 0.2:
-        errors.append("RISK_FREE_RATE seems unrealistic (should be 0-20%)")
-    
+
     if errors:
         raise ValueError(f"Configuration errors: {', '.join(errors)}")
-    
+
     return True
 
 if __name__ == "__main__":
@@ -120,12 +115,12 @@ if __name__ == "__main__":
     print("=" * 50)
     print(f"Start Date: {START_DATE}")
     print(f"End Date: {END_DATE}")
-    print(f"Risk-Free Rate: {RISK_FREE_RATE * 100}%")
+    print(f"Risk-Free Rate: Sourced from FRED (10Y Treasury)")
     print(f"Database Path: {get_db_path()}")
     print(f"Benchmark: {BENCHMARK_TICKER}")
     print(f"Number of Holdings: {len(TICKERS)}")
     print("=" * 50)
-    
+
     try:
         validate_config()
         print("✓ Configuration is valid")
