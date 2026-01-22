@@ -169,6 +169,19 @@ export interface Portfolio {
 }
 
 /**
+ * PortfolioWithUser represents a portfolio with owner email.
+ */
+export interface PortfolioWithUser {
+  id: string;
+  user_id: string;
+  user_email: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * PortfolioInput is the data required to create or update a portfolio.
  */
 export interface PortfolioInput {

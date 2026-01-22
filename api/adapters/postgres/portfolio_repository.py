@@ -108,6 +108,21 @@ class PostgresPortfolioRepository(PortfolioRepository):
                 (id,),
             )
 
+    def get_all_with_users(self) -> list[tuple[Portfolio, str]]:
+        """Retrieve all portfolios with owner email."""
+        with self._pool.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.id, p.user_id, p.name, p.description, p.created_at, p.updated_at, u.email
+                FROM portfolios p
+                JOIN users u ON p.user_id = u.id
+                ORDER BY p.created_at DESC
+                """
+            )
+            rows = cur.fetchall()
+
+        return [(self._row_to_portfolio(row[:6]), row[6]) for row in rows]
+
     def _row_to_portfolio(self, row: tuple) -> Portfolio:
         """Convert a database row to a Portfolio model."""
         return Portfolio(

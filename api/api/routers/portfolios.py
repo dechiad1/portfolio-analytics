@@ -20,6 +20,7 @@ from api.schemas.portfolio import (
     PortfolioResponse,
     PortfolioListResponse,
     PortfolioSummaryResponse,
+    AllPortfoliosListResponse,
 )
 from api.schemas.holding import (
     CreateHoldingRequest,
@@ -50,6 +51,19 @@ def list_portfolios(
     """List all portfolios for the authenticated user."""
     portfolios = portfolio_service.get_user_portfolios(user_id)
     return PortfolioMapper.to_list_response(portfolios)
+
+
+@router.get(
+    "/all",
+    response_model=AllPortfoliosListResponse,
+    summary="List all portfolios with user info",
+)
+def list_all_portfolios(
+    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+) -> AllPortfoliosListResponse:
+    """List all portfolios with owner email (for admin view)."""
+    portfolios_with_users = portfolio_service.get_all_portfolios_with_users()
+    return PortfolioMapper.to_all_portfolios_response(portfolios_with_users)
 
 
 @router.post(

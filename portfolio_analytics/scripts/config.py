@@ -12,7 +12,7 @@ from pathlib import Path
 # ============================================================================
 
 # Date range for historical data
-START_DATE = '2022-01-01'  # Adjust to your investment start date
+START_DATE = '2019-01-01'  # 7 years of history for 5Y calculations
 END_DATE = datetime.now().strftime('%Y-%m-%d')  # Today
 
 # Note: Risk-free rate is now sourced from FRED Treasury yields (10Y)

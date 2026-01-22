@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import type { Portfolio } from '../../shared/types';
+import type { PortfolioWithUser } from '../../shared/types';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorMessage } from '../../shared/components/ErrorMessage';
 import { usePortfolioListState } from './usePortfolioListState';
@@ -34,7 +34,7 @@ export function PortfolioListPage() {
   }, []);
 
   const handleDelete = useCallback(
-    async (portfolio: Portfolio) => {
+    async (portfolio: PortfolioWithUser) => {
       const confirmed = window.confirm(
         `Are you sure you want to delete "${portfolio.name}"? This action cannot be undone.`
       );
@@ -161,6 +161,7 @@ export function PortfolioListPage() {
                   </svg>
                   <h3 className={styles.cardTitle}>{portfolio.name}</h3>
                 </div>
+                <p className={styles.cardUserEmail}>{portfolio.user_email}</p>
                 {portfolio.description && (
                   <p className={styles.cardDescription}>{portfolio.description}</p>
                 )}

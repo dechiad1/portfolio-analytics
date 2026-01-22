@@ -31,8 +31,9 @@ test.describe('Portfolio Management', () => {
     // Submit the form
     await page.getByRole('dialog').getByRole('button', { name: 'Create Portfolio' }).click();
 
-    // Verify portfolio was created
-    await expect(page.getByRole('heading', { name: 'E2E Test Portfolio', level: 3 })).toBeVisible({ timeout: 10000 });
+    // Verify portfolio was created - look for card with both name and user email
+    const portfolioCard = page.locator('a').filter({ hasText: 'E2E Test Portfolio' }).filter({ hasText: testUser.email });
+    await expect(portfolioCard).toBeVisible({ timeout: 10000 });
   });
 
   test('should add stock, fund, and treasury to portfolio and display holdings', async ({ page }) => {
@@ -59,8 +60,9 @@ test.describe('Portfolio Management', () => {
     // Wait for dialog to close
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
 
-    // Navigate to the portfolio detail page
-    await page.getByRole('link', { name: /Holdings Test Portfolio/ }).click();
+    // Navigate to the portfolio detail page - look for card with both name and user email
+    const portfolioCard = page.locator('a').filter({ hasText: 'Holdings Test Portfolio' }).filter({ hasText: holdingsTestUser.email });
+    await portfolioCard.click();
     await expect(page.getByRole('heading', { name: 'Holdings Test Portfolio', level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Helper function to add a holding
@@ -163,12 +165,22 @@ test.describe('Portfolio Management', () => {
     // Wait for redirect to portfolios page
     await expect(page).toHaveURL('/portfolios', { timeout: 10000 });
 
-    // Navigate to the Holdings page
-    await page.getByRole('link', { name: 'Holdings' }).click();
-    await expect(page).toHaveURL('/holdings');
+    // Create a portfolio first
+    await page.getByRole('button', { name: 'New Portfolio' }).click();
+    await page.getByRole('textbox', { name: 'Name' }).fill('Autofill Test Portfolio');
+    await page.getByRole('dialog').getByRole('button', { name: 'Create Portfolio' }).click();
 
-    // Click "Add Holding" to show the form
+    // Wait for dialog to close
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
+
+    // Navigate to the portfolio detail page
+    const portfolioCard = page.locator('a').filter({ hasText: 'Autofill Test Portfolio' }).filter({ hasText: autofillTestUser.email });
+    await portfolioCard.click();
+    await expect(page.getByRole('heading', { name: 'Autofill Test Portfolio', level: 1 })).toBeVisible({ timeout: 10000 });
+
+    // Click "Add Holding" to show the modal
     await page.getByRole('button', { name: 'Add Holding' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     // Type in the ticker search field to trigger search (VFIAX is in the DuckDB database)
     const tickerInput = page.locator('#ticker');
@@ -184,7 +196,7 @@ test.describe('Portfolio Management', () => {
     const nameInput = page.locator('#name');
     await expect(nameInput).toHaveValue('Vanguard 500 Index Fund');
 
-    const assetClassSelect = page.locator('#asset_class');
+    const assetClassSelect = page.locator('#assetClass');
     await expect(assetClassSelect).toHaveValue('U.S. Stocks');
 
     // The ticker should now be VFIAX

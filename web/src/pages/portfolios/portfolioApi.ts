@@ -1,6 +1,7 @@
 import { api } from '../../shared/api/client';
 import type {
   Portfolio,
+  PortfolioWithUser,
   PortfolioInput,
   PortfolioHolding,
   PortfolioHoldingInput,
@@ -13,6 +14,14 @@ import type {
  */
 export async function fetchPortfolios(): Promise<Portfolio[]> {
   const response = await api.get<{ portfolios: Portfolio[] }>('/portfolios');
+  return response.portfolios;
+}
+
+/**
+ * Fetch all portfolios with user info.
+ */
+export async function fetchAllPortfolios(): Promise<PortfolioWithUser[]> {
+  const response = await api.get<{ portfolios: PortfolioWithUser[] }>('/portfolios/all');
   return response.portfolios;
 }
 

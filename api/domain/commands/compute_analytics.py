@@ -1,4 +1,3 @@
-from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -76,9 +75,9 @@ class ComputeAnalyticsCommand:
         self._holding_repository = holding_repository
         self._analytics_repository = analytics_repository
 
-    def execute(self, session_id: UUID | None) -> PortfolioAnalytics:
-        """Compute and return analytics for all holdings (session_id ignored for now)."""
-        holdings = self._holding_repository.get_by_session_id(session_id)
+    def execute(self, portfolio_id: UUID | None = None) -> PortfolioAnalytics:
+        """Compute and return analytics for all holdings."""
+        holdings = self._holding_repository.get_all()
 
         if not holdings:
             return PortfolioAnalytics(
@@ -126,12 +125,8 @@ class ComputeAnalyticsCommand:
     def _index_performance_by_ticker(
         self, performance_data: list[TickerPerformance]
     ) -> dict[str, TickerPerformance]:
-        """Get the latest performance record for each ticker."""
-        latest: dict[str, TickerPerformance] = {}
-        for perf in performance_data:
-            if perf.ticker not in latest or perf.date > latest[perf.ticker].date:
-                latest[perf.ticker] = perf
-        return latest
+        """Index performance records by ticker."""
+        return {perf.ticker: perf for perf in performance_data}
 
     def _index_metadata_by_ticker(
         self, metadata: list[FundMetadata]
@@ -153,22 +148,23 @@ class ComputeAnalyticsCommand:
             meta = metadata_by_ticker.get(holding.ticker)
 
             # Convert Decimal to float and provide defaults
-            total_return = float(perf.cumulative_return) if perf and perf.cumulative_return else 0.0
-            volatility = float(perf.volatility) if perf and perf.volatility else 0.0
+            total_return = float(perf.total_return_pct) if perf and perf.total_return_pct else 0.0
+            annualized_return = float(perf.annualized_return_pct) if perf and perf.annualized_return_pct else 0.0
+            volatility = float(perf.volatility_pct) if perf and perf.volatility_pct else 0.0
+            sharpe = float(perf.sharpe_ratio) if perf and perf.sharpe_ratio else 0.0
+            vs_benchmark = float(perf.vs_benchmark_pct) if perf and perf.vs_benchmark_pct else 0.0
             expense_ratio = float(meta.expense_ratio) if meta and meta.expense_ratio else None
 
-            # TODO: Calculate actual metrics from DuckDB data
-            # For now, using placeholder values
             analytics = TickerAnalytics(
                 ticker=holding.ticker,
                 name=holding.name,
                 asset_class=holding.asset_class,
                 sector=holding.sector,
-                total_return_pct=total_return * 100,
-                annualized_return_pct=total_return * 100,  # Simplified
-                volatility_pct=volatility * 100,
-                sharpe_ratio=0.0,  # TODO: Calculate Sharpe ratio
-                vs_benchmark_pct=0.0,  # TODO: Calculate vs benchmark
+                total_return_pct=total_return,
+                annualized_return_pct=annualized_return,
+                volatility_pct=volatility,
+                sharpe_ratio=sharpe,
+                vs_benchmark_pct=vs_benchmark,
                 expense_ratio=expense_ratio,
             )
             result.append(analytics)
