@@ -22,12 +22,19 @@ class HoldingMapper:
         """Convert a Holding domain model to a HoldingResponse."""
         return HoldingResponse(
             id=holding.id,
-            session_id=holding.session_id,
+            portfolio_id=holding.portfolio_id,
             ticker=holding.ticker,
             name=holding.name,
+            asset_type=holding.asset_type,
             asset_class=holding.asset_class,
             sector=holding.sector,
             broker=holding.broker,
+            quantity=float(holding.quantity),
+            purchase_price=float(holding.purchase_price),
+            current_price=float(holding.current_price) if holding.current_price else None,
+            market_value=float(holding.market_value),
+            cost_basis=float(holding.cost_basis),
+            gain_loss=float(holding.gain_loss),
             purchase_date=holding.purchase_date,
             created_at=holding.created_at,
         )

@@ -30,6 +30,21 @@ class DatabaseConfig(BaseModel):
     duckdb: DuckDBConfig
 
 
+class AuthConfig(BaseModel):
+    """Authentication configuration."""
+
+    jwt_secret: str
+    jwt_algorithm: str = "HS256"
+    token_expiry_hours: int = 24
+
+
+class LLMConfig(BaseModel):
+    """LLM configuration."""
+
+    anthropic_api_key: str
+    model: str = "claude-sonnet-4-20250514"
+
+
 class ServerConfig(BaseModel):
     """Server configuration."""
 
@@ -43,6 +58,8 @@ class AppConfig(BaseModel):
 
     database: DatabaseConfig
     server: ServerConfig
+    auth: AuthConfig
+    llm: LLMConfig
 
 
 def _resolve_env_vars(value: Any) -> Any:
@@ -76,9 +93,15 @@ def load_config() -> AppConfig:
 _postgres_pool = None
 _session_repository = None
 _holding_repository = None
+_user_repository = None
+_portfolio_repository = None
 _analytics_repository = None
 _session_service = None
 _holding_service = None
+_auth_service = None
+_portfolio_service = None
+_llm_repository = None
+_risk_analysis_service = None
 _compute_analytics_command = None
 
 
@@ -119,6 +142,26 @@ def get_holding_repository():
     return _holding_repository
 
 
+def get_user_repository():
+    """Get or create UserRepository instance."""
+    global _user_repository
+    if _user_repository is None:
+        from adapters.postgres.user_repository import PostgresUserRepository
+
+        _user_repository = PostgresUserRepository(get_postgres_pool())
+    return _user_repository
+
+
+def get_portfolio_repository():
+    """Get or create PortfolioRepository instance."""
+    global _portfolio_repository
+    if _portfolio_repository is None:
+        from adapters.postgres.portfolio_repository import PostgresPortfolioRepository
+
+        _portfolio_repository = PostgresPortfolioRepository(get_postgres_pool())
+    return _portfolio_repository
+
+
 def get_analytics_repository():
     """Get or create AnalyticsRepository instance."""
     global _analytics_repository
@@ -151,6 +194,63 @@ def get_holding_service():
     return _holding_service
 
 
+def get_auth_service():
+    """Get or create AuthService instance for FastAPI dependency injection."""
+    global _auth_service
+    if _auth_service is None:
+        from domain.services.auth_service import AuthService
+
+        config = load_config()
+        _auth_service = AuthService(
+            user_repository=get_user_repository(),
+            jwt_secret=config.auth.jwt_secret,
+            jwt_algorithm=config.auth.jwt_algorithm,
+            token_expiry_hours=config.auth.token_expiry_hours,
+        )
+    return _auth_service
+
+
+def get_portfolio_service():
+    """Get or create PortfolioService instance for FastAPI dependency injection."""
+    global _portfolio_service
+    if _portfolio_service is None:
+        from domain.services.portfolio_service import PortfolioService
+
+        _portfolio_service = PortfolioService(
+            portfolio_repository=get_portfolio_repository(),
+            holding_repository=get_holding_repository(),
+        )
+    return _portfolio_service
+
+
+def get_llm_repository():
+    """Get or create LLMRepository instance."""
+    global _llm_repository
+    if _llm_repository is None:
+        from adapters.llm.anthropic_repository import AnthropicLLMRepository
+
+        config = load_config()
+        _llm_repository = AnthropicLLMRepository(
+            api_key=config.llm.anthropic_api_key,
+            model=config.llm.model,
+        )
+    return _llm_repository
+
+
+def get_risk_analysis_service():
+    """Get or create RiskAnalysisService instance for FastAPI dependency injection."""
+    global _risk_analysis_service
+    if _risk_analysis_service is None:
+        from domain.services.risk_analysis_service import RiskAnalysisService
+
+        _risk_analysis_service = RiskAnalysisService(
+            llm_repository=get_llm_repository(),
+            portfolio_repository=get_portfolio_repository(),
+            holding_repository=get_holding_repository(),
+        )
+    return _risk_analysis_service
+
+
 def get_compute_analytics_command():
     """Get or create ComputeAnalyticsCommand instance for FastAPI dependency injection."""
     global _compute_analytics_command
@@ -167,7 +267,10 @@ def get_compute_analytics_command():
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
     global _postgres_pool, _session_repository, _holding_repository
+    global _user_repository, _portfolio_repository
     global _analytics_repository, _session_service, _holding_service
+    global _auth_service, _portfolio_service
+    global _llm_repository, _risk_analysis_service
     global _compute_analytics_command
 
     if _postgres_pool is not None:
@@ -176,7 +279,13 @@ def reset_dependencies() -> None:
     _postgres_pool = None
     _session_repository = None
     _holding_repository = None
+    _user_repository = None
+    _portfolio_repository = None
     _analytics_repository = None
     _session_service = None
     _holding_service = None
+    _auth_service = None
+    _portfolio_service = None
+    _llm_repository = None
+    _risk_analysis_service = None
     _compute_analytics_command = None

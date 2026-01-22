@@ -18,8 +18,13 @@ class HoldingRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_session_id(self, session_id: UUID | None) -> list[Holding]:
-        """Retrieve all holdings for a session. If session_id is None, return all holdings."""
+    def get_by_portfolio_id(self, portfolio_id: UUID) -> list[Holding]:
+        """Retrieve all holdings for a portfolio."""
+        pass
+
+    @abstractmethod
+    def get_all(self) -> list[Holding]:
+        """Retrieve all holdings."""
         pass
 
     @abstractmethod

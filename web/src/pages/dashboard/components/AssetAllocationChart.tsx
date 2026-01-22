@@ -64,7 +64,7 @@ function CustomTooltip({
 /**
  * Custom legend renderer.
  */
-function renderLegend(props: { payload?: Array<{ value: string; color: string }> }) {
+function renderLegend(props: { payload?: Array<{ value: string; color?: string }> }) {
   const { payload } = props;
   if (!payload) return null;
 
@@ -74,7 +74,7 @@ function renderLegend(props: { payload?: Array<{ value: string; color: string }>
         <li key={`legend-${index}`} className={styles.legendItem}>
           <span
             className={styles.legendColor}
-            style={{ backgroundColor: entry.color }}
+            style={{ backgroundColor: entry.color ?? '#999' }}
           />
           <span className={styles.legendLabel}>{entry.value}</span>
         </li>

@@ -10,6 +10,19 @@ from api.schemas.holding import (
     BulkCreateHoldingsResponse,
 )
 from api.schemas.analytics import AnalyticsResponse
+from api.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    AuthResponse,
+    UserResponse,
+)
+from api.schemas.portfolio import (
+    CreatePortfolioRequest,
+    UpdatePortfolioRequest,
+    PortfolioResponse,
+    PortfolioListResponse,
+    PortfolioSummaryResponse,
+)
 
 __all__ = [
     "SessionResponse",
@@ -20,4 +33,13 @@ __all__ = [
     "HoldingListResponse",
     "BulkCreateHoldingsResponse",
     "AnalyticsResponse",
+    "RegisterRequest",
+    "LoginRequest",
+    "AuthResponse",
+    "UserResponse",
+    "CreatePortfolioRequest",
+    "UpdatePortfolioRequest",
+    "PortfolioResponse",
+    "PortfolioListResponse",
+    "PortfolioSummaryResponse",
 ]

@@ -1,6 +1,5 @@
+from decimal import Decimal
 from uuid import UUID
-
-from psycopg import sql
 
 from domain.models.holding import Holding
 from domain.ports.holding_repository import HoldingRepository
@@ -20,21 +19,27 @@ class PostgresHoldingRepository(HoldingRepository):
             cur.execute(
                 """
                 INSERT INTO holdings (
-                    id, session_id, ticker, name, asset_class,
-                    sector, broker, purchase_date, created_at
+                    id, portfolio_id, ticker, name, asset_type, asset_class,
+                    sector, broker, quantity, purchase_price, current_price,
+                    purchase_date, created_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id, session_id, ticker, name, asset_class,
-                          sector, broker, purchase_date, created_at
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, portfolio_id, ticker, name, asset_type, asset_class,
+                          sector, broker, quantity, purchase_price, current_price,
+                          purchase_date, created_at
                 """,
                 (
                     holding.id,
-                    holding.session_id,
+                    holding.portfolio_id,
                     holding.ticker,
                     holding.name,
+                    holding.asset_type,
                     holding.asset_class,
                     holding.sector,
                     holding.broker,
+                    holding.quantity,
+                    holding.purchase_price,
+                    holding.current_price,
                     holding.purchase_date,
                     holding.created_at,
                 ),
@@ -51,8 +56,9 @@ class PostgresHoldingRepository(HoldingRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, session_id, ticker, name, asset_class,
-                       sector, broker, purchase_date, created_at
+                SELECT id, portfolio_id, ticker, name, asset_type, asset_class,
+                       sector, broker, quantity, purchase_price, current_price,
+                       purchase_date, created_at
                 FROM holdings
                 WHERE id = %s
                 """,
@@ -65,29 +71,36 @@ class PostgresHoldingRepository(HoldingRepository):
 
         return self._row_to_holding(row)
 
-    def get_by_session_id(self, session_id: UUID | None) -> list[Holding]:
-        """Retrieve all holdings for a session. If session_id is None, return all holdings."""
+    def get_by_portfolio_id(self, portfolio_id: UUID) -> list[Holding]:
+        """Retrieve all holdings for a portfolio."""
         with self._pool.cursor() as cur:
-            if session_id is None:
-                cur.execute(
-                    """
-                    SELECT id, session_id, ticker, name, asset_class,
-                           sector, broker, purchase_date, created_at
-                    FROM holdings
-                    ORDER BY created_at ASC
-                    """
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT id, session_id, ticker, name, asset_class,
-                           sector, broker, purchase_date, created_at
-                    FROM holdings
-                    WHERE session_id = %s
-                    ORDER BY created_at ASC
-                    """,
-                    (session_id,),
-                )
+            cur.execute(
+                """
+                SELECT id, portfolio_id, ticker, name, asset_type, asset_class,
+                       sector, broker, quantity, purchase_price, current_price,
+                       purchase_date, created_at
+                FROM holdings
+                WHERE portfolio_id = %s
+                ORDER BY created_at ASC
+                """,
+                (portfolio_id,),
+            )
+            rows = cur.fetchall()
+
+        return [self._row_to_holding(row) for row in rows]
+
+    def get_all(self) -> list[Holding]:
+        """Retrieve all holdings."""
+        with self._pool.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, portfolio_id, ticker, name, asset_type, asset_class,
+                       sector, broker, quantity, purchase_price, current_price,
+                       purchase_date, created_at
+                FROM holdings
+                ORDER BY created_at ASC
+                """
+            )
             rows = cur.fetchall()
 
         return [self._row_to_holding(row) for row in rows]
@@ -100,20 +113,29 @@ class PostgresHoldingRepository(HoldingRepository):
                 UPDATE holdings
                 SET ticker = %s,
                     name = %s,
+                    asset_type = %s,
                     asset_class = %s,
                     sector = %s,
                     broker = %s,
+                    quantity = %s,
+                    purchase_price = %s,
+                    current_price = %s,
                     purchase_date = %s
                 WHERE id = %s
-                RETURNING id, session_id, ticker, name, asset_class,
-                          sector, broker, purchase_date, created_at
+                RETURNING id, portfolio_id, ticker, name, asset_type, asset_class,
+                          sector, broker, quantity, purchase_price, current_price,
+                          purchase_date, created_at
                 """,
                 (
                     holding.ticker,
                     holding.name,
+                    holding.asset_type,
                     holding.asset_class,
                     holding.sector,
                     holding.broker,
+                    holding.quantity,
+                    holding.purchase_price,
+                    holding.current_price,
                     holding.purchase_date,
                     holding.id,
                 ),
@@ -146,12 +168,16 @@ class PostgresHoldingRepository(HoldingRepository):
                 values = [
                     (
                         h.id,
-                        h.session_id,
+                        h.portfolio_id,
                         h.ticker,
                         h.name,
+                        h.asset_type,
                         h.asset_class,
                         h.sector,
                         h.broker,
+                        h.quantity,
+                        h.purchase_price,
+                        h.current_price,
                         h.purchase_date,
                         h.created_at,
                     )
@@ -161,10 +187,11 @@ class PostgresHoldingRepository(HoldingRepository):
                 cur.executemany(
                     """
                     INSERT INTO holdings (
-                        id, session_id, ticker, name, asset_class,
-                        sector, broker, purchase_date, created_at
+                        id, portfolio_id, ticker, name, asset_type, asset_class,
+                        sector, broker, quantity, purchase_price, current_price,
+                        purchase_date, created_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     values,
                 )
@@ -176,12 +203,16 @@ class PostgresHoldingRepository(HoldingRepository):
         """Convert a database row to a Holding model."""
         return Holding(
             id=row[0],
-            session_id=row[1],
+            portfolio_id=row[1],
             ticker=row[2],
             name=row[3],
-            asset_class=row[4],
-            sector=row[5],
-            broker=row[6],
-            purchase_date=row[7],
-            created_at=row[8],
+            asset_type=row[4] or "equity",
+            asset_class=row[5],
+            sector=row[6],
+            broker=row[7],
+            quantity=Decimal(str(row[8])) if row[8] else Decimal("0"),
+            purchase_price=Decimal(str(row[9])) if row[9] else Decimal("0"),
+            current_price=Decimal(str(row[10])) if row[10] else None,
+            purchase_date=row[11],
+            created_at=row[12],
         )
