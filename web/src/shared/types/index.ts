@@ -244,7 +244,7 @@ export interface RiskAnalysisResult {
 }
 
 /**
- * Available asset types for holdings.
+ * Available asset types for holdings (display values).
  */
 export const ASSET_TYPES = [
   'Stock',
@@ -258,3 +258,28 @@ export const ASSET_TYPES = [
 ] as const;
 
 export type AssetType = (typeof ASSET_TYPES)[number];
+
+/**
+ * Mapping from display asset type to API value.
+ */
+export const ASSET_TYPE_TO_API: Record<AssetType, string> = {
+  'Stock': 'equity',
+  'ETF': 'etf',
+  'Mutual Fund': 'mutual_fund',
+  'Bond': 'bond',
+  'REIT': 'equity',
+  'Cryptocurrency': 'equity',
+  'Commodity': 'equity',
+  'Cash': 'cash',
+};
+
+/**
+ * Mapping from API asset type to display value.
+ */
+export const API_TO_ASSET_TYPE: Record<string, AssetType> = {
+  'equity': 'Stock',
+  'etf': 'ETF',
+  'mutual_fund': 'Mutual Fund',
+  'bond': 'Bond',
+  'cash': 'Cash',
+};

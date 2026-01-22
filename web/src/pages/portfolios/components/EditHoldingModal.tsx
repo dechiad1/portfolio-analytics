@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, type FormEvent } from 'react';
-import type { PortfolioHolding, PortfolioHoldingInput } from '../../../shared/types';
-import { ASSET_TYPES, ASSET_CLASSES, SECTORS } from '../../../shared/types';
+import type { PortfolioHolding, PortfolioHoldingInput, AssetType } from '../../../shared/types';
+import { ASSET_TYPES, ASSET_CLASSES, SECTORS, ASSET_TYPE_TO_API, API_TO_ASSET_TYPE } from '../../../shared/types';
 import styles from './HoldingModal.module.css';
 
 interface EditHoldingModalProps {
@@ -21,7 +21,7 @@ export function EditHoldingModal({
 }: EditHoldingModalProps) {
   const [ticker, setTicker] = useState(holding.ticker);
   const [name, setName] = useState(holding.name);
-  const [assetType, setAssetType] = useState(holding.asset_type);
+  const [assetType, setAssetType] = useState(API_TO_ASSET_TYPE[holding.asset_type] || holding.asset_type);
   const [assetClass, setAssetClass] = useState(holding.asset_class);
   const [sector, setSector] = useState(holding.sector);
   const [broker, setBroker] = useState(holding.broker);
@@ -47,7 +47,7 @@ export function EditHoldingModal({
       const success = await onSubmit({
         ticker: ticker.trim().toUpperCase(),
         name: name.trim(),
-        asset_type: assetType,
+        asset_type: ASSET_TYPE_TO_API[assetType as AssetType] || assetType,
         asset_class: assetClass,
         sector: sector,
         broker: broker.trim(),

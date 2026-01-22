@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, type FormEvent } from 'react';
-import type { PortfolioHoldingInput } from '../../../shared/types';
-import { ASSET_TYPES, ASSET_CLASSES, SECTORS } from '../../../shared/types';
+import type { PortfolioHoldingInput, AssetType } from '../../../shared/types';
+import { ASSET_TYPES, ASSET_CLASSES, SECTORS, ASSET_TYPE_TO_API } from '../../../shared/types';
 import styles from './HoldingModal.module.css';
 
 interface AddHoldingModalProps {
@@ -45,7 +45,7 @@ export function AddHoldingModal({
       const success = await onSubmit({
         ticker: ticker.trim().toUpperCase(),
         name: name.trim(),
-        asset_type: assetType,
+        asset_type: ASSET_TYPE_TO_API[assetType as AssetType],
         asset_class: assetClass,
         sector: sector,
         broker: broker.trim(),

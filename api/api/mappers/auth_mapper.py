@@ -11,7 +11,7 @@ class AuthMapper:
         return AuthResponse(
             user_id=user.id,
             email=user.email,
-            token=token,
+            access_token=token,
         )
 
     @staticmethod
