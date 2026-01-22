@@ -21,4 +21,5 @@ class AuthMapper:
             id=user.id,
             email=user.email,
             created_at=user.created_at,
+            is_admin=user.is_admin,
         )

@@ -17,15 +17,15 @@ class PostgresPortfolioRepository(PortfolioRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO portfolios (id, user_id, name, description, created_at, updated_at)
+                INSERT INTO portfolio (portfolio_id, user_id, name, base_currency, created_at, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, user_id, name, description, created_at, updated_at
+                RETURNING portfolio_id, user_id, name, base_currency, created_at, updated_at
                 """,
                 (
                     portfolio.id,
                     portfolio.user_id,
                     portfolio.name,
-                    portfolio.description,
+                    portfolio.base_currency,
                     portfolio.created_at,
                     portfolio.updated_at,
                 ),
@@ -42,9 +42,9 @@ class PostgresPortfolioRepository(PortfolioRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, user_id, name, description, created_at, updated_at
-                FROM portfolios
-                WHERE id = %s
+                SELECT portfolio_id, user_id, name, base_currency, created_at, updated_at
+                FROM portfolio
+                WHERE portfolio_id = %s
                 """,
                 (id,),
             )
@@ -60,8 +60,8 @@ class PostgresPortfolioRepository(PortfolioRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, user_id, name, description, created_at, updated_at
-                FROM portfolios
+                SELECT portfolio_id, user_id, name, base_currency, created_at, updated_at
+                FROM portfolio
                 WHERE user_id = %s
                 ORDER BY created_at DESC
                 """,
@@ -76,16 +76,16 @@ class PostgresPortfolioRepository(PortfolioRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                UPDATE portfolios
+                UPDATE portfolio
                 SET name = %s,
-                    description = %s,
+                    base_currency = %s,
                     updated_at = %s
-                WHERE id = %s
-                RETURNING id, user_id, name, description, created_at, updated_at
+                WHERE portfolio_id = %s
+                RETURNING portfolio_id, user_id, name, base_currency, created_at, updated_at
                 """,
                 (
                     portfolio.name,
-                    portfolio.description,
+                    portfolio.base_currency,
                     portfolio.updated_at,
                     portfolio.id,
                 ),
@@ -102,8 +102,8 @@ class PostgresPortfolioRepository(PortfolioRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                DELETE FROM portfolios
-                WHERE id = %s
+                DELETE FROM portfolio
+                WHERE portfolio_id = %s
                 """,
                 (id,),
             )
@@ -113,8 +113,8 @@ class PostgresPortfolioRepository(PortfolioRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                SELECT p.id, p.user_id, p.name, p.description, p.created_at, p.updated_at, u.email
-                FROM portfolios p
+                SELECT p.portfolio_id, p.user_id, p.name, p.base_currency, p.created_at, p.updated_at, u.email
+                FROM portfolio p
                 JOIN users u ON p.user_id = u.id
                 ORDER BY p.created_at DESC
                 """
@@ -129,7 +129,7 @@ class PostgresPortfolioRepository(PortfolioRepository):
             id=row[0],
             user_id=row[1],
             name=row[2],
-            description=row[3],
+            base_currency=row[3],
             created_at=row[4],
             updated_at=row[5],
         )

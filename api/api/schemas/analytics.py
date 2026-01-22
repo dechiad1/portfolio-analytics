@@ -92,3 +92,23 @@ class SecuritiesListResponse(BaseModel):
 
     securities: list[SecurityResponse]
     count: int
+
+
+class TickerDetailsResponse(BaseModel):
+    """Response schema for ticker details with pricing data."""
+
+    ticker: str
+    name: str
+    asset_class: str
+    sector: str | None = None
+    category: str | None = None
+    latest_price: float | None = None
+    latest_price_date: date | None = None
+
+
+class TickerPriceResponse(BaseModel):
+    """Response schema for ticker price at a specific date."""
+
+    ticker: str
+    price_date: date
+    price: float

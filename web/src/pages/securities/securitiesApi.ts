@@ -25,10 +25,45 @@ interface SecuritiesListResponse {
   count: number;
 }
 
+export interface AddTickerResponse {
+  ticker: string;
+  display_name: string;
+  asset_type: string;
+  exchange: string | null;
+  message: string;
+}
+
+export interface UserAddedTicker {
+  ticker: string;
+  display_name: string;
+  asset_type: string;
+  added_at: string;
+}
+
+interface UserAddedTickersResponse {
+  tickers: UserAddedTicker[];
+  count: number;
+}
+
 /**
  * Fetch all available securities.
  */
 export async function fetchSecurities(): Promise<Security[]> {
   const response = await api.get<SecuritiesListResponse>('/analytics/securities');
   return response.securities;
+}
+
+/**
+ * Fetch user-added tickers (may not have data yet).
+ */
+export async function fetchUserAddedTickers(): Promise<UserAddedTicker[]> {
+  const response = await api.get<UserAddedTickersResponse>('/tickers/user-added');
+  return response.tickers;
+}
+
+/**
+ * Add a new ticker for tracking.
+ */
+export async function addTicker(ticker: string): Promise<AddTickerResponse> {
+  return api.post<AddTickerResponse>('/tickers/track', { ticker });
 }

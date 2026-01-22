@@ -11,5 +11,6 @@ class User(BaseModel):
     email: str
     password_hash: str
     created_at: datetime
+    is_admin: bool = False
 
     model_config = {"frozen": True}

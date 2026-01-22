@@ -10,7 +10,7 @@ class Portfolio(BaseModel):
     id: UUID
     user_id: UUID
     name: str
-    description: str | None
+    base_currency: str = "USD"
     created_at: datetime
     updated_at: datetime
 

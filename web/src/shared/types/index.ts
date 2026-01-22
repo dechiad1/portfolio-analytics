@@ -163,7 +163,7 @@ export interface Portfolio {
   id: string;
   user_id: string;
   name: string;
-  description: string | null;
+  base_currency: string;
   created_at: string;
   updated_at: string;
 }
@@ -176,7 +176,7 @@ export interface PortfolioWithUser {
   user_id: string;
   user_email: string;
   name: string;
-  description: string | null;
+  base_currency: string;
   created_at: string;
   updated_at: string;
 }
@@ -186,7 +186,7 @@ export interface PortfolioWithUser {
  */
 export interface PortfolioInput {
   name: string;
-  description?: string;
+  base_currency?: string;
 }
 
 /**

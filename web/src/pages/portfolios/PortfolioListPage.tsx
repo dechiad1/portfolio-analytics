@@ -162,9 +162,7 @@ export function PortfolioListPage() {
                   <h3 className={styles.cardTitle}>{portfolio.name}</h3>
                 </div>
                 <p className={styles.cardUserEmail}>{portfolio.user_email}</p>
-                {portfolio.description && (
-                  <p className={styles.cardDescription}>{portfolio.description}</p>
-                )}
+                <p className={styles.cardDescription}>{portfolio.base_currency}</p>
                 <p className={styles.cardDate}>
                   Created {new Date(portfolio.created_at).toLocaleDateString()}
                 </p>

@@ -33,7 +33,7 @@ class PortfolioService:
         self,
         user_id: UUID,
         name: str,
-        description: str | None = None,
+        base_currency: str = "USD",
     ) -> Portfolio:
         """Create a new portfolio for a user."""
         now = datetime.now(timezone.utc)
@@ -41,18 +41,20 @@ class PortfolioService:
             id=uuid4(),
             user_id=user_id,
             name=name.strip(),
-            description=description.strip() if description else None,
+            base_currency=base_currency.upper(),
             created_at=now,
             updated_at=now,
         )
         return self._portfolio_repo.create(portfolio)
 
-    def get_portfolio(self, portfolio_id: UUID, user_id: UUID) -> Portfolio:
-        """Get a portfolio by ID, verifying ownership."""
+    def get_portfolio(
+        self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
+    ) -> Portfolio:
+        """Get a portfolio by ID, verifying ownership or admin access."""
         portfolio = self._portfolio_repo.get_by_id(portfolio_id)
         if portfolio is None:
             raise PortfolioNotFoundError(f"Portfolio {portfolio_id} not found")
-        if portfolio.user_id != user_id:
+        if not is_admin and portfolio.user_id != user_id:
             raise PortfolioAccessDeniedError("Access denied to this portfolio")
         return portfolio
 
@@ -60,43 +62,60 @@ class PortfolioService:
         """Get all portfolios for a user."""
         return self._portfolio_repo.get_by_user_id(user_id)
 
-    def get_all_portfolios_with_users(self) -> list[tuple[Portfolio, str]]:
-        """Get all portfolios with owner emails."""
-        return self._portfolio_repo.get_all_with_users()
+    def get_all_portfolios_with_users(
+        self, user_id: UUID | None = None, is_admin: bool = False
+    ) -> list[tuple[Portfolio, str]]:
+        """Get portfolios with owner emails.
+
+        If is_admin is True, returns all portfolios.
+        Otherwise, returns only portfolios owned by user_id.
+        """
+        all_portfolios = self._portfolio_repo.get_all_with_users()
+        if is_admin:
+            return all_portfolios
+        # Filter to only the user's portfolios
+        return [(p, email) for p, email in all_portfolios if p.user_id == user_id]
 
     def update_portfolio(
         self,
         portfolio_id: UUID,
         user_id: UUID,
         name: str | None = None,
-        description: str | None = None,
+        base_currency: str | None = None,
+        is_admin: bool = False,
     ) -> Portfolio:
         """Update a portfolio."""
-        existing = self.get_portfolio(portfolio_id, user_id)
+        existing = self.get_portfolio(portfolio_id, user_id, is_admin)
 
         updated = Portfolio(
             id=existing.id,
             user_id=existing.user_id,
             name=name.strip() if name else existing.name,
-            description=description.strip() if description is not None else existing.description,
+            base_currency=base_currency.upper() if base_currency else existing.base_currency,
             created_at=existing.created_at,
             updated_at=datetime.now(timezone.utc),
         )
         return self._portfolio_repo.update(updated)
 
-    def delete_portfolio(self, portfolio_id: UUID, user_id: UUID) -> None:
+    def delete_portfolio(
+        self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
+    ) -> None:
         """Delete a portfolio and all its holdings."""
-        self.get_portfolio(portfolio_id, user_id)  # Verify access
+        self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
         self._portfolio_repo.delete(portfolio_id)
 
-    def get_portfolio_holdings(self, portfolio_id: UUID, user_id: UUID) -> list[Holding]:
+    def get_portfolio_holdings(
+        self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
+    ) -> list[Holding]:
         """Get all holdings in a portfolio."""
-        self.get_portfolio(portfolio_id, user_id)  # Verify access
+        self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
         return self._holding_repo.get_by_portfolio_id(portfolio_id)
 
-    def get_portfolio_summary(self, portfolio_id: UUID, user_id: UUID) -> dict:
+    def get_portfolio_summary(
+        self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
+    ) -> dict:
         """Get a summary of portfolio composition and value."""
-        portfolio = self.get_portfolio(portfolio_id, user_id)
+        portfolio = self.get_portfolio(portfolio_id, user_id, is_admin)
         holdings = self._holding_repo.get_by_portfolio_id(portfolio_id)
 
         total_value = Decimal("0")

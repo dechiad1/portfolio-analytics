@@ -19,6 +19,7 @@ alembic = "^1.13.0"
 pyjwt = "^2.8.0"
 anthropic = "^0.40.0"
 email-validator = "^2.3.0"
+yfinance = "^0.2.32"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -47,5 +48,5 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["duckdb", "psycopg_pool"]
+module = ["duckdb", "psycopg_pool", "yfinance"]
 ignore_missing_imports = true

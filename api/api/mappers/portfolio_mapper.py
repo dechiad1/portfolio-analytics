@@ -19,7 +19,7 @@ class PortfolioMapper:
             id=portfolio.id,
             user_id=portfolio.user_id,
             name=portfolio.name,
-            description=portfolio.description,
+            base_currency=portfolio.base_currency,
             created_at=portfolio.created_at,
             updated_at=portfolio.updated_at,
         )
@@ -64,7 +64,7 @@ class PortfolioMapper:
             user_id=portfolio.user_id,
             user_email=user_email,
             name=portfolio.name,
-            description=portfolio.description,
+            base_currency=portfolio.base_currency,
             created_at=portfolio.created_at,
             updated_at=portfolio.updated_at,
         )
