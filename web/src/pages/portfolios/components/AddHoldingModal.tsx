@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, type FormEvent } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { PortfolioHoldingInput, AssetType } from '../../../shared/types';
 import { ASSET_TYPES, ASSET_CLASSES, SECTORS, ASSET_TYPE_TO_API } from '../../../shared/types';
+import { searchTickers, type TickerSearchResult } from '../tickerSearchApi';
 import styles from './HoldingModal.module.css';
 
 interface AddHoldingModalProps {
@@ -28,6 +29,13 @@ export function AddHoldingModal({
   const [currentPrice, setCurrentPrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
 
+  // Ticker search state
+  const [searchResults, setSearchResults] = useState<TickerSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Handle escape key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -39,8 +47,65 @@ export function AddHoldingModal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose, isSubmitting]);
 
+  // Debounced ticker search
+  useEffect(() => {
+    if (ticker.length > 0) {
+      setIsSearching(true);
+
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+
+      debounceTimeout.current = setTimeout(async () => {
+        try {
+          const results = await searchTickers(ticker, 10);
+          setSearchResults(results);
+          setShowDropdown(results.length > 0);
+        } catch (error) {
+          console.error('Failed to search tickers:', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300);
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setIsSearching(false);
+    }
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [ticker]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectTicker = useCallback((result: TickerSearchResult) => {
+    setTicker(result.ticker);
+    setName(result.name);
+    setAssetClass(result.asset_class);
+    if (result.category) {
+      setSector(result.category);
+    }
+    setShowDropdown(false);
+    setSearchResults([]);
+  }, []);
+
   const handleSubmit = useCallback(
-    async (e: FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       const success = await onSubmit({
         ticker: ticker.trim().toUpperCase(),
@@ -114,7 +179,7 @@ export function AddHoldingModal({
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.row}>
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.tickerField}`} ref={dropdownRef}>
               <label htmlFor="ticker" className={styles.label}>
                 Ticker <span className={styles.required}>*</span>
               </label>
@@ -124,11 +189,30 @@ export function AddHoldingModal({
                 className={styles.input}
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
-                placeholder="AAPL"
+                placeholder="Type to search (e.g., JPM)"
                 required
                 disabled={isSubmitting}
                 autoFocus
+                autoComplete="off"
               />
+              {isSearching && (
+                <span className={styles.searchingIndicator}>Searching...</span>
+              )}
+              {showDropdown && searchResults.length > 0 && (
+                <div className={styles.dropdown}>
+                  {searchResults.map((result) => (
+                    <div
+                      key={result.ticker}
+                      className={styles.dropdownItem}
+                      onClick={() => handleSelectTicker(result)}
+                    >
+                      <div className={styles.dropdownTicker}>{result.ticker}</div>
+                      <div className={styles.dropdownName}>{result.name}</div>
+                      <div className={styles.dropdownAssetClass}>{result.asset_class}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className={styles.field}>
               <label htmlFor="name" className={styles.label}>

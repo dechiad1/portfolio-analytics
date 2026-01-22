@@ -21,7 +21,7 @@ export function EditHoldingModal({
 }: EditHoldingModalProps) {
   const [ticker, setTicker] = useState(holding.ticker);
   const [name, setName] = useState(holding.name);
-  const [assetType, setAssetType] = useState(API_TO_ASSET_TYPE[holding.asset_type] || holding.asset_type);
+  const [assetType, setAssetType] = useState<string>(API_TO_ASSET_TYPE[holding.asset_type] || holding.asset_type);
   const [assetClass, setAssetClass] = useState(holding.asset_class);
   const [sector, setSector] = useState(holding.sector);
   const [broker, setBroker] = useState(holding.broker);

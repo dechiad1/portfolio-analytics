@@ -31,3 +31,8 @@ class PortfolioRepository(ABC):
     def delete(self, id: UUID) -> None:
         """Delete a portfolio by ID."""
         pass
+
+    @abstractmethod
+    def get_all_with_users(self) -> list[tuple["Portfolio", str]]:
+        """Retrieve all portfolios with owner email."""
+        pass

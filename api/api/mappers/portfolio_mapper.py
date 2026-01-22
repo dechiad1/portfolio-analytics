@@ -3,6 +3,8 @@ from api.schemas.portfolio import (
     PortfolioResponse,
     PortfolioListResponse,
     PortfolioSummaryResponse,
+    PortfolioWithUserResponse,
+    AllPortfoliosListResponse,
     AssetBreakdown,
 )
 
@@ -50,4 +52,32 @@ class PortfolioMapper:
             by_sector=[
                 AssetBreakdown(**item) for item in summary["by_sector"]
             ],
+        )
+
+    @staticmethod
+    def to_with_user_response(
+        portfolio: Portfolio, user_email: str
+    ) -> PortfolioWithUserResponse:
+        """Map Portfolio with user email to PortfolioWithUserResponse."""
+        return PortfolioWithUserResponse(
+            id=portfolio.id,
+            user_id=portfolio.user_id,
+            user_email=user_email,
+            name=portfolio.name,
+            description=portfolio.description,
+            created_at=portfolio.created_at,
+            updated_at=portfolio.updated_at,
+        )
+
+    @staticmethod
+    def to_all_portfolios_response(
+        portfolios_with_users: list[tuple[Portfolio, str]]
+    ) -> AllPortfoliosListResponse:
+        """Map list of (Portfolio, email) to AllPortfoliosListResponse."""
+        return AllPortfoliosListResponse(
+            portfolios=[
+                PortfolioMapper.to_with_user_response(p, email)
+                for p, email in portfolios_with_users
+            ],
+            count=len(portfolios_with_users),
         )

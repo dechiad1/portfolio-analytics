@@ -6,13 +6,27 @@ from pydantic import BaseModel
 
 
 class TickerPerformance(BaseModel):
-    """Performance data for a single ticker."""
+    """Aggregated performance data for a single ticker."""
 
     ticker: str
-    date: date
-    daily_return: Decimal
-    cumulative_return: Decimal
-    volatility: Decimal | None = None
+    # Legacy fields (for backwards compatibility)
+    total_return_pct: Decimal
+    annualized_return_pct: Decimal
+    volatility_pct: Decimal | None = None
+    sharpe_ratio: Decimal | None = None
+    vs_benchmark_pct: Decimal | None = None
+    # 1-Year metrics
+    total_return_1y_pct: Decimal | None = None
+    return_vs_risk_free_1y_pct: Decimal | None = None
+    return_vs_sp500_1y_pct: Decimal | None = None
+    volatility_1y_pct: Decimal | None = None
+    sharpe_ratio_1y: Decimal | None = None
+    # 5-Year metrics
+    total_return_5y_pct: Decimal | None = None
+    return_vs_risk_free_5y_pct: Decimal | None = None
+    return_vs_sp500_5y_pct: Decimal | None = None
+    volatility_5y_pct: Decimal | None = None
+    sharpe_ratio_5y: Decimal | None = None
 
     model_config = {"frozen": True}
 
@@ -48,4 +62,9 @@ class AnalyticsRepository(ABC):
     @abstractmethod
     def search_tickers(self, query: str, limit: int = 20) -> list[FundMetadata]:
         """Search for tickers by name or ticker symbol. Returns up to limit results."""
+        pass
+
+    @abstractmethod
+    def get_all_securities(self) -> list[tuple[FundMetadata, TickerPerformance | None]]:
+        """Retrieve all securities with their performance data."""
         pass

@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import (
     sessions_router,
-    holdings_router,
     analytics_router,
     auth_router,
     portfolios_router,
@@ -38,7 +37,6 @@ def create_app() -> FastAPI:
 
     # Legacy routes (to be deprecated)
     app.include_router(sessions_router)
-    app.include_router(holdings_router)
     app.include_router(analytics_router)
 
     @app.get("/health", tags=["health"])

@@ -23,8 +23,8 @@ import sys
 from pathlib import Path
 
 import duckdb
-import psycopg2
-import psycopg2.extras
+import psycopg
+from psycopg.rows import dict_row
 
 # Configuration
 DUCKDB_PATH = Path(__file__).parent.parent / "data" / "portfolio.duckdb"
@@ -130,12 +130,14 @@ TABLES_TO_REPLICATE = {
 
 def get_postgres_connection():
     """Create Postgres connection from environment or defaults."""
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ.get("POSTGRES_HOST", "localhost"),
         port=int(os.environ.get("POSTGRES_PORT", "5432")),
-        database=os.environ.get("POSTGRES_DB", "portfolio_analytics"),
+        dbname=os.environ.get("POSTGRES_DB", "portfolio_analytics"),
         user=os.environ.get("POSTGRES_USER", "postgres"),
         password=os.environ.get("POSTGRES_PASSWORD", "postgres"),
+        row_factory=dict_row,
+        autocommit=True,
     )
 
 
@@ -157,8 +159,8 @@ def replicate_table(pg_conn, duck_conn, source_table: str, create_sql: str):
     # Truncate existing data
     duck_conn.execute(f"DELETE FROM {target_table}")
 
-    # Fetch all data from Postgres
-    with pg_conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    # Fetch all data from Postgres (row_factory=dict_row set on connection)
+    with pg_conn.cursor() as cur:
         cur.execute(f"SELECT * FROM {source_table}")
         rows = cur.fetchall()
 
@@ -202,7 +204,7 @@ def main():
             try:
                 rows = replicate_table(pg_conn, duck_conn, source_table, create_sql)
                 total_rows += rows
-            except psycopg2.errors.UndefinedTable:
+            except psycopg.errors.UndefinedTable:
                 print(f"    Table {source_table} does not exist in Postgres (skipping)")
             except Exception as e:
                 print(f"    Error replicating {source_table}: {e}")

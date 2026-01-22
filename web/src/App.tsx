@@ -3,11 +3,11 @@ import { AuthProvider } from './shared/contexts/AuthContext';
 import { Layout } from './shared/components/Layout';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
-import { HoldingsPage } from './pages/holdings/HoldingsPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { PortfolioListPage } from './pages/portfolios/PortfolioListPage';
 import { PortfolioDetailPage } from './pages/portfolios/PortfolioDetailPage';
+import { SecuritiesPage } from './pages/securities/SecuritiesPage';
 
 /**
  * App is the root component that sets up routing and auth context.
@@ -34,7 +34,7 @@ function App() {
             <Route path="portfolios" element={<PortfolioListPage />} />
             <Route path="portfolios/:id" element={<PortfolioDetailPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="holdings" element={<HoldingsPage />} />
+            <Route path="securities" element={<SecuritiesPage />} />
           </Route>
 
           {/* Catch-all redirect */}

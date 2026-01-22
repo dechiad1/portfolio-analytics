@@ -53,8 +53,8 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    to: '/holdings',
-    label: 'Holdings',
+    to: '/securities',
+    label: 'Securities',
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"

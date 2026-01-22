@@ -60,6 +60,10 @@ class PortfolioService:
         """Get all portfolios for a user."""
         return self._portfolio_repo.get_by_user_id(user_id)
 
+    def get_all_portfolios_with_users(self) -> list[tuple[Portfolio, str]]:
+        """Get all portfolios with owner emails."""
+        return self._portfolio_repo.get_all_with_users()
+
     def update_portfolio(
         self,
         portfolio_id: UUID,

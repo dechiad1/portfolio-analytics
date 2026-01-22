@@ -153,6 +153,12 @@
   color: var(--color-text-primary);
 }
 
+.cardUserEmail {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
 .cardDescription {
   margin: 0 0 0.75rem;
   font-size: 0.875rem;

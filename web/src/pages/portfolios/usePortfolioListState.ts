@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Portfolio, PortfolioInput } from '../../shared/types';
+import type { PortfolioWithUser, PortfolioInput } from '../../shared/types';
 import { ApiClientError } from '../../shared/api/client';
-import { fetchPortfolios, createPortfolio, deletePortfolio } from './portfolioApi';
+import { fetchAllPortfolios, createPortfolio, deletePortfolio } from './portfolioApi';
 
 /**
  * State and operations for managing the portfolio list.
  */
 interface PortfolioListState {
-  /** List of all portfolios */
-  portfolios: Portfolio[];
+  /** List of all portfolios with user info */
+  portfolios: PortfolioWithUser[];
   /** Loading state for initial fetch */
   isLoading: boolean;
   /** Error message from last operation */
@@ -29,7 +29,7 @@ interface PortfolioListState {
  * Hook to manage portfolio list state and operations.
  */
 export function usePortfolioListState(): PortfolioListState {
-  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [portfolios, setPortfolios] = useState<PortfolioWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -39,7 +39,7 @@ export function usePortfolioListState(): PortfolioListState {
     setError(null);
 
     try {
-      const data = await fetchPortfolios();
+      const data = await fetchAllPortfolios();
       setPortfolios(data);
     } catch (err) {
       const message =
@@ -63,8 +63,8 @@ export function usePortfolioListState(): PortfolioListState {
     setError(null);
 
     try {
-      const newPortfolio = await createPortfolio(input);
-      setPortfolios((prev) => [...prev, newPortfolio]);
+      await createPortfolio(input);
+      await loadPortfolios();
       return true;
     } catch (err) {
       const message =
@@ -74,7 +74,7 @@ export function usePortfolioListState(): PortfolioListState {
     } finally {
       setIsMutating(false);
     }
-  }, []);
+  }, [loadPortfolios]);
 
   const removePortfolio = useCallback(async (portfolioId: string): Promise<boolean> => {
     setIsMutating(true);

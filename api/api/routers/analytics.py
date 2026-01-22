@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Query
 
 from domain.commands.compute_analytics import ComputeAnalyticsCommand
 from domain.ports.analytics_repository import AnalyticsRepository
-from api.schemas.analytics import AnalyticsResponse, TickerSearchResponse, TickerSearchResult
+from api.schemas.analytics import (
+    AnalyticsResponse,
+    TickerSearchResponse,
+    TickerSearchResult,
+    SecurityResponse,
+    SecuritiesListResponse,
+)
 from api.mappers.holding_mapper import HoldingMapper
 from dependencies import get_compute_analytics_command, get_analytics_repository
 
@@ -48,4 +54,42 @@ def search_tickers(
             for fund in results
         ],
         count=len(results),
+    )
+
+
+@router.get(
+    "/securities",
+    response_model=SecuritiesListResponse,
+    summary="List all available securities",
+)
+def list_securities(
+    analytics_repo: Annotated[AnalyticsRepository, Depends(get_analytics_repository)],
+) -> SecuritiesListResponse:
+    """List all available securities with their performance data."""
+    securities = analytics_repo.get_all_securities()
+
+    return SecuritiesListResponse(
+        securities=[
+            SecurityResponse(
+                ticker=metadata.ticker,
+                name=metadata.name,
+                asset_class=metadata.asset_class,
+                category=metadata.category,
+                expense_ratio=float(metadata.expense_ratio) if metadata.expense_ratio else None,
+                # 1-Year metrics
+                total_return_1y_pct=float(perf.total_return_1y_pct) if perf and perf.total_return_1y_pct is not None else None,
+                return_vs_risk_free_1y_pct=float(perf.return_vs_risk_free_1y_pct) if perf and perf.return_vs_risk_free_1y_pct is not None else None,
+                return_vs_sp500_1y_pct=float(perf.return_vs_sp500_1y_pct) if perf and perf.return_vs_sp500_1y_pct is not None else None,
+                volatility_1y_pct=float(perf.volatility_1y_pct) if perf and perf.volatility_1y_pct is not None else None,
+                sharpe_ratio_1y=float(perf.sharpe_ratio_1y) if perf and perf.sharpe_ratio_1y is not None else None,
+                # 5-Year metrics
+                total_return_5y_pct=float(perf.total_return_5y_pct) if perf and perf.total_return_5y_pct is not None else None,
+                return_vs_risk_free_5y_pct=float(perf.return_vs_risk_free_5y_pct) if perf and perf.return_vs_risk_free_5y_pct is not None else None,
+                return_vs_sp500_5y_pct=float(perf.return_vs_sp500_5y_pct) if perf and perf.return_vs_sp500_5y_pct is not None else None,
+                volatility_5y_pct=float(perf.volatility_5y_pct) if perf and perf.volatility_5y_pct is not None else None,
+                sharpe_ratio_5y=float(perf.sharpe_ratio_5y) if perf and perf.sharpe_ratio_5y is not None else None,
+            )
+            for metadata, perf in securities
+        ],
+        count=len(securities),
     )

@@ -63,3 +63,32 @@ class AnalyticsResponse(BaseModel):
     holdings: list[TickerAnalyticsResponse]
     asset_class_breakdown: list[AssetClassBreakdownResponse]
     sector_breakdown: list[SectorBreakdownResponse]
+
+
+class SecurityResponse(BaseModel):
+    """Response schema for a security with performance data."""
+
+    ticker: str
+    name: str
+    asset_class: str
+    category: str | None = None
+    expense_ratio: float | None = None
+    # 1-Year metrics
+    total_return_1y_pct: float | None = None
+    return_vs_risk_free_1y_pct: float | None = None
+    return_vs_sp500_1y_pct: float | None = None
+    volatility_1y_pct: float | None = None
+    sharpe_ratio_1y: float | None = None
+    # 5-Year metrics
+    total_return_5y_pct: float | None = None
+    return_vs_risk_free_5y_pct: float | None = None
+    return_vs_sp500_5y_pct: float | None = None
+    volatility_5y_pct: float | None = None
+    sharpe_ratio_5y: float | None = None
+
+
+class SecuritiesListResponse(BaseModel):
+    """Response schema for a list of securities."""
+
+    securities: list[SecurityResponse]
+    count: int

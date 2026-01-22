@@ -57,3 +57,22 @@ class PortfolioSummaryResponse(BaseModel):
     by_asset_type: list[AssetBreakdown]
     by_asset_class: list[AssetBreakdown]
     by_sector: list[AssetBreakdown]
+
+
+class PortfolioWithUserResponse(BaseModel):
+    """Response schema for a portfolio with user email."""
+
+    id: UUID
+    user_id: UUID
+    user_email: str
+    name: str
+    description: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AllPortfoliosListResponse(BaseModel):
+    """Response schema for a list of all portfolios with user info."""
+
+    portfolios: list[PortfolioWithUserResponse]
+    count: int
