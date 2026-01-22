@@ -30,6 +30,22 @@
   gap: 1rem;
 }
 
+.trackButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.trackButton:hover {
+  background-color: var(--color-primary-hover);
+}
+
 .stats {
   display: flex;
   align-items: center;

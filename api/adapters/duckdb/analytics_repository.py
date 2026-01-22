@@ -7,6 +7,8 @@ from domain.ports.analytics_repository import (
     AnalyticsRepository,
     FundMetadata,
     TickerPerformance,
+    TickerDetails,
+    TickerPriceAtDate,
 )
 from datetime import date
 
@@ -224,3 +226,78 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
             securities.append((metadata, performance))
 
         return securities
+
+    def get_ticker_details(self, ticker: str) -> TickerDetails | None:
+        """Get detailed ticker info including latest price for holding creation."""
+        query = """
+            WITH latest_price AS (
+                SELECT
+                    p.price,
+                    p.as_of_date
+                FROM main_marts.fact_price_daily p
+                JOIN main_marts.dim_security s ON p.security_id = s.security_id
+                WHERE UPPER(s.ticker) = UPPER(?)
+                ORDER BY p.as_of_date DESC
+                LIMIT 1
+            )
+            SELECT
+                d.ticker,
+                d.fund_name,
+                d.asset_class,
+                d.sector,
+                d.category,
+                lp.price,
+                lp.as_of_date
+            FROM main_marts.dim_funds d
+            LEFT JOIN latest_price lp ON 1=1
+            WHERE UPPER(d.ticker) = UPPER(?)
+        """
+
+        with self._get_connection() as conn:
+            try:
+                result = conn.execute(query, [ticker, ticker]).fetchone()
+            except duckdb.CatalogException:
+                return None
+
+        if not result:
+            return None
+
+        return TickerDetails(
+            ticker=result[0],
+            name=result[1],
+            asset_class=result[2],
+            sector=result[3],
+            category=result[4],
+            latest_price=Decimal(str(result[5])) if result[5] is not None else None,
+            latest_price_date=result[6],
+        )
+
+    def get_price_for_date(self, ticker: str, price_date: date) -> TickerPriceAtDate | None:
+        """Get the price for a ticker at or before a specific date."""
+        query = """
+            SELECT
+                s.ticker,
+                p.as_of_date,
+                p.price
+            FROM main_marts.fact_price_daily p
+            JOIN main_marts.dim_security s ON p.security_id = s.security_id
+            WHERE UPPER(s.ticker) = UPPER(?)
+              AND p.as_of_date <= ?
+            ORDER BY p.as_of_date DESC
+            LIMIT 1
+        """
+
+        with self._get_connection() as conn:
+            try:
+                result = conn.execute(query, [ticker, price_date]).fetchone()
+            except duckdb.CatalogException:
+                return None
+
+        if not result:
+            return None
+
+        return TickerPriceAtDate(
+            ticker=result[0],
+            price_date=result[1],
+            price=Decimal(str(result[2])),
+        )

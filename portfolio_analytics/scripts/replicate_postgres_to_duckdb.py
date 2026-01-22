@@ -113,6 +113,10 @@ TABLES_TO_REPLICATE = {
             quantity DECIMAL(18, 8) NOT NULL,
             avg_cost DECIMAL(18, 8) NOT NULL,
             updated_at TIMESTAMP NOT NULL,
+            broker VARCHAR(100) NOT NULL,
+            purchase_date DATE NOT NULL,
+            current_price DECIMAL(18, 8),
+            asset_class VARCHAR(100) NOT NULL,
             PRIMARY KEY (portfolio_id, security_id)
         )
     """,
@@ -132,8 +136,8 @@ def get_postgres_connection():
     """Create Postgres connection from environment or defaults."""
     return psycopg.connect(
         host=os.environ.get("POSTGRES_HOST", "localhost"),
-        port=int(os.environ.get("POSTGRES_PORT", "5432")),
-        dbname=os.environ.get("POSTGRES_DB", "portfolio_analytics"),
+        port=int(os.environ.get("POSTGRES_PORT", "5433")),
+        dbname=os.environ.get("POSTGRES_DB", "portfolio_users"),
         user=os.environ.get("POSTGRES_USER", "postgres"),
         password=os.environ.get("POSTGRES_PASSWORD", "postgres"),
         row_factory=dict_row,

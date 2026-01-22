@@ -8,6 +8,8 @@ interface CreatePortfolioModalProps {
   isSubmitting: boolean;
 }
 
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF'] as const;
+
 /**
  * CreatePortfolioModal provides a form to create a new portfolio.
  */
@@ -17,7 +19,7 @@ export function CreatePortfolioModal({
   isSubmitting,
 }: CreatePortfolioModalProps) {
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [baseCurrency, setBaseCurrency] = useState('USD');
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -35,13 +37,13 @@ export function CreatePortfolioModal({
       e.preventDefault();
       const success = await onSubmit({
         name: name.trim(),
-        description: description.trim() || undefined,
+        base_currency: baseCurrency,
       });
       if (success) {
         onClose();
       }
     },
-    [name, description, onSubmit, onClose]
+    [name, baseCurrency, onSubmit, onClose]
   );
 
   const handleBackdropClick = useCallback(
@@ -101,18 +103,22 @@ export function CreatePortfolioModal({
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="description" className={styles.label}>
-              Description
+            <label htmlFor="baseCurrency" className={styles.label}>
+              Base Currency
             </label>
-            <textarea
-              id="description"
-              className={styles.textarea}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description for your portfolio"
-              rows={3}
+            <select
+              id="baseCurrency"
+              className={styles.select}
+              value={baseCurrency}
+              onChange={(e) => setBaseCurrency(e.target.value)}
               disabled={isSubmitting}
-            />
+            >
+              {CURRENCIES.map((currency) => (
+                <option key={currency} value={currency}>
+                  {currency}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className={styles.actions}>

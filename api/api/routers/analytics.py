@@ -1,6 +1,7 @@
+from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 
 from domain.commands.compute_analytics import ComputeAnalyticsCommand
 from domain.ports.analytics_repository import AnalyticsRepository
@@ -10,6 +11,8 @@ from api.schemas.analytics import (
     TickerSearchResult,
     SecurityResponse,
     SecuritiesListResponse,
+    TickerDetailsResponse,
+    TickerPriceResponse,
 )
 from api.mappers.holding_mapper import HoldingMapper
 from dependencies import get_compute_analytics_command, get_analytics_repository
@@ -92,4 +95,54 @@ def list_securities(
             for metadata, perf in securities
         ],
         count=len(securities),
+    )
+
+
+@router.get(
+    "/tickers/{ticker}/details",
+    response_model=TickerDetailsResponse,
+    summary="Get ticker details with latest price",
+)
+def get_ticker_details(
+    ticker: str,
+    analytics_repo: Annotated[AnalyticsRepository, Depends(get_analytics_repository)],
+) -> TickerDetailsResponse:
+    """Get detailed ticker information including latest price for holding creation."""
+    details = analytics_repo.get_ticker_details(ticker)
+    if details is None:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found")
+
+    return TickerDetailsResponse(
+        ticker=details.ticker,
+        name=details.name,
+        asset_class=details.asset_class,
+        sector=details.sector,
+        category=details.category,
+        latest_price=float(details.latest_price) if details.latest_price else None,
+        latest_price_date=details.latest_price_date,
+    )
+
+
+@router.get(
+    "/tickers/{ticker}/price",
+    response_model=TickerPriceResponse,
+    summary="Get ticker price for a specific date",
+)
+def get_ticker_price(
+    ticker: str,
+    price_date: Annotated[date, Query(alias="date", description="Date to get price for (YYYY-MM-DD)")],
+    analytics_repo: Annotated[AnalyticsRepository, Depends(get_analytics_repository)],
+) -> TickerPriceResponse:
+    """Get the price for a ticker at or before a specific date."""
+    price_info = analytics_repo.get_price_for_date(ticker, price_date)
+    if price_info is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No price found for {ticker} on or before {price_date}",
+        )
+
+    return TickerPriceResponse(
+        ticker=price_info.ticker,
+        price_date=price_info.price_date,
+        price=float(price_info.price),
     )

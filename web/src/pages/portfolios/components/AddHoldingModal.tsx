@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { PortfolioHoldingInput, AssetType } from '../../../shared/types';
 import { ASSET_TYPES, ASSET_CLASSES, SECTORS, ASSET_TYPE_TO_API } from '../../../shared/types';
-import { searchTickers, type TickerSearchResult } from '../tickerSearchApi';
+import { searchTickers, getTickerDetails, getTickerPrice, type TickerSearchResult } from '../tickerSearchApi';
 import styles from './HoldingModal.module.css';
+
+const BROKERS = ['', 'Fidelity', 'Vanguard', 'Chase', 'Robinhood'] as const;
 
 interface AddHoldingModalProps {
   onSubmit: (input: PortfolioHoldingInput) => Promise<boolean>;
@@ -93,7 +95,7 @@ export function AddHoldingModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelectTicker = useCallback((result: TickerSearchResult) => {
+  const handleSelectTicker = useCallback(async (result: TickerSearchResult) => {
     setTicker(result.ticker);
     setName(result.name);
     setAssetClass(result.asset_class);
@@ -102,7 +104,45 @@ export function AddHoldingModal({
     }
     setShowDropdown(false);
     setSearchResults([]);
+
+    // Fetch detailed ticker info including prices
+    try {
+      const details = await getTickerDetails(result.ticker);
+
+      // Auto-populate sector if available
+      if (details.sector && (SECTORS as readonly string[]).includes(details.sector)) {
+        setSector(details.sector);
+      } else if (details.category && (SECTORS as readonly string[]).includes(details.category)) {
+        setSector(details.category);
+      }
+
+      // Auto-populate prices and date
+      if (details.latest_price !== null) {
+        setCurrentPrice(details.latest_price.toFixed(2));
+        setPurchasePrice(details.latest_price.toFixed(2));
+      }
+      if (details.latest_price_date) {
+        setPurchaseDate(details.latest_price_date);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ticker details:', error);
+    }
   }, []);
+
+  // Handler for purchase date changes - fetch historical price
+  const handlePurchaseDateChange = useCallback(async (newDate: string) => {
+    setPurchaseDate(newDate);
+
+    if (ticker && newDate) {
+      try {
+        const priceInfo = await getTickerPrice(ticker, newDate);
+        setPurchasePrice(priceInfo.price.toFixed(2));
+      } catch (error) {
+        console.error('Failed to fetch price for date:', error);
+        // Keep existing price if fetch fails
+      }
+    }
+  }, [ticker]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -113,7 +153,7 @@ export function AddHoldingModal({
         asset_type: ASSET_TYPE_TO_API[assetType as AssetType],
         asset_class: assetClass,
         sector: sector,
-        broker: broker.trim(),
+        broker: broker.trim() || 'Unknown',
         quantity: parseFloat(quantity),
         purchase_price: parseFloat(purchasePrice),
         current_price: parseFloat(currentPrice),
@@ -294,18 +334,21 @@ export function AddHoldingModal({
             </div>
             <div className={styles.field}>
               <label htmlFor="broker" className={styles.label}>
-                Broker <span className={styles.required}>*</span>
+                Broker
               </label>
-              <input
+              <select
                 id="broker"
-                type="text"
-                className={styles.input}
+                className={styles.select}
                 value={broker}
                 onChange={(e) => setBroker(e.target.value)}
-                placeholder="Fidelity"
-                required
                 disabled={isSubmitting}
-              />
+              >
+                {BROKERS.map((b) => (
+                  <option key={b} value={b}>
+                    {b || '(Optional)'}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -336,7 +379,7 @@ export function AddHoldingModal({
                 type="date"
                 className={styles.input}
                 value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
+                onChange={(e) => handlePurchaseDateChange(e.target.value)}
                 required
                 disabled={isSubmitting}
               />

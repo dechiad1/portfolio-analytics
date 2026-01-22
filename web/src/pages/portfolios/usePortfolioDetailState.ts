@@ -69,20 +69,30 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
     setError(null);
 
     try {
-      // Fetch all data in parallel
-      const [portfolioData, summaryData, holdingsData] = await Promise.all([
-        getPortfolio(portfolioId),
+      // Fetch portfolio first to check access
+      const portfolioData = await getPortfolio(portfolioId);
+      setPortfolio(portfolioData);
+
+      // Then fetch related data in parallel
+      const [summaryData, holdingsData] = await Promise.all([
         getPortfolioSummary(portfolioId).catch(() => null),
-        fetchPortfolioHoldings(portfolioId),
+        fetchPortfolioHoldings(portfolioId).catch(() => []),
       ]);
 
-      setPortfolio(portfolioData);
       setSummary(summaryData);
       setHoldings(holdingsData);
     } catch (err) {
-      const message =
-        err instanceof ApiClientError ? err.detail : 'Failed to load portfolio';
-      setError(message);
+      if (err instanceof ApiClientError) {
+        if (err.status === 403) {
+          setError('Access denied. You do not have permission to view this portfolio.');
+        } else if (err.status === 404) {
+          setError('Portfolio not found.');
+        } else {
+          setError(err.detail);
+        }
+      } else {
+        setError('Failed to load portfolio');
+      }
     } finally {
       setIsLoading(false);
     }

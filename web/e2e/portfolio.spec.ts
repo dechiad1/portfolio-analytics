@@ -26,7 +26,6 @@ test.describe('Portfolio Management', () => {
 
     // Fill in portfolio name
     await page.getByRole('textbox', { name: 'Name' }).fill('E2E Test Portfolio');
-    await page.getByRole('textbox', { name: 'Description' }).fill('Portfolio created by E2E test');
 
     // Submit the form
     await page.getByRole('dialog').getByRole('button', { name: 'Create Portfolio' }).click();

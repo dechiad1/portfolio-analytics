@@ -44,6 +44,30 @@ class FundMetadata(BaseModel):
     model_config = {"frozen": True}
 
 
+class TickerDetails(BaseModel):
+    """Detailed ticker information with pricing data for holding creation."""
+
+    ticker: str
+    name: str
+    asset_class: str
+    sector: str | None = None
+    category: str | None = None
+    latest_price: Decimal | None = None
+    latest_price_date: date | None = None
+
+    model_config = {"frozen": True}
+
+
+class TickerPriceAtDate(BaseModel):
+    """Price information for a ticker at a specific date."""
+
+    ticker: str
+    price_date: date
+    price: Decimal
+
+    model_config = {"frozen": True}
+
+
 class AnalyticsRepository(ABC):
     """Port for analytics data retrieval from the data warehouse."""
 
@@ -67,4 +91,14 @@ class AnalyticsRepository(ABC):
     @abstractmethod
     def get_all_securities(self) -> list[tuple[FundMetadata, TickerPerformance | None]]:
         """Retrieve all securities with their performance data."""
+        pass
+
+    @abstractmethod
+    def get_ticker_details(self, ticker: str) -> TickerDetails | None:
+        """Get detailed ticker info including latest price for holding creation."""
+        pass
+
+    @abstractmethod
+    def get_price_for_date(self, ticker: str, price_date: date) -> TickerPriceAtDate | None:
+        """Get the price for a ticker at or before a specific date."""
         pass

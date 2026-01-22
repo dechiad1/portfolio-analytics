@@ -8,14 +8,14 @@ class CreatePortfolioRequest(BaseModel):
     """Request schema for creating a portfolio."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    description: str | None = Field(None, max_length=1000)
+    base_currency: str = Field(default="USD", min_length=3, max_length=3)
 
 
 class UpdatePortfolioRequest(BaseModel):
     """Request schema for updating a portfolio."""
 
     name: str | None = Field(None, min_length=1, max_length=255)
-    description: str | None = Field(None, max_length=1000)
+    base_currency: str | None = Field(None, min_length=3, max_length=3)
 
 
 class PortfolioResponse(BaseModel):
@@ -24,7 +24,7 @@ class PortfolioResponse(BaseModel):
     id: UUID
     user_id: UUID
     name: str
-    description: str | None
+    base_currency: str
     created_at: datetime
     updated_at: datetime
 
@@ -66,7 +66,7 @@ class PortfolioWithUserResponse(BaseModel):
     user_id: UUID
     user_email: str
     name: str
-    description: str | None
+    base_currency: str
     created_at: datetime
     updated_at: datetime
 

@@ -111,9 +111,7 @@ export function PortfolioDetailPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>{portfolio.name}</h1>
-          {portfolio.description && (
-            <p className={styles.description}>{portfolio.description}</p>
-          )}
+          <p className={styles.description}>Currency: {portfolio.base_currency}</p>
         </div>
         <button
           className={styles.addButton}

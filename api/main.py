@@ -7,6 +7,7 @@ from api.routers import (
     analytics_router,
     auth_router,
     portfolios_router,
+    tickers_router,
 )
 from dependencies import load_config
 
@@ -34,6 +35,9 @@ def create_app() -> FastAPI:
 
     # Portfolio routes (auth required)
     app.include_router(portfolios_router)
+
+    # Ticker routes (no auth required)
+    app.include_router(tickers_router)
 
     # Legacy routes (to be deprecated)
     app.include_router(sessions_router)

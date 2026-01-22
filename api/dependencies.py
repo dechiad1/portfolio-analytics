@@ -103,6 +103,9 @@ _portfolio_service = None
 _llm_repository = None
 _risk_analysis_service = None
 _compute_analytics_command = None
+_ticker_validator = None
+_ticker_repository = None
+_ticker_service = None
 
 
 def get_postgres_pool():
@@ -264,6 +267,39 @@ def get_compute_analytics_command():
     return _compute_analytics_command
 
 
+def get_ticker_validator():
+    """Get or create TickerValidator instance."""
+    global _ticker_validator
+    if _ticker_validator is None:
+        from adapters.yfinance.ticker_validator import YFinanceTickerValidator
+
+        _ticker_validator = YFinanceTickerValidator()
+    return _ticker_validator
+
+
+def get_ticker_repository():
+    """Get or create TickerRepository instance."""
+    global _ticker_repository
+    if _ticker_repository is None:
+        from adapters.postgres.ticker_repository import PostgresTickerRepository
+
+        _ticker_repository = PostgresTickerRepository(get_postgres_pool())
+    return _ticker_repository
+
+
+def get_ticker_service():
+    """Get or create TickerService instance for FastAPI dependency injection."""
+    global _ticker_service
+    if _ticker_service is None:
+        from domain.services.ticker_service import TickerService
+
+        _ticker_service = TickerService(
+            validator=get_ticker_validator(),
+            repository=get_ticker_repository(),
+        )
+    return _ticker_service
+
+
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
     global _postgres_pool, _session_repository, _holding_repository
@@ -272,6 +308,7 @@ def reset_dependencies() -> None:
     global _auth_service, _portfolio_service
     global _llm_repository, _risk_analysis_service
     global _compute_analytics_command
+    global _ticker_validator, _ticker_repository, _ticker_service
 
     if _postgres_pool is not None:
         _postgres_pool.close()
@@ -289,3 +326,6 @@ def reset_dependencies() -> None:
     _llm_repository = None
     _risk_analysis_service = None
     _compute_analytics_command = None
+    _ticker_validator = None
+    _ticker_repository = None
+    _ticker_service = None

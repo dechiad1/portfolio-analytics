@@ -18,6 +18,7 @@ tasks:
       - task: db:migrate
       - task: db:seed
       - task: replicate
+      - task: dbt:ticker-tracker
       - task: fetch
       - task: dbt
       - echo ""
@@ -140,6 +141,13 @@ tasks:
     cmds:
       - poetry run dbt run
 
+  dbt:ticker-tracker:
+    desc: Build dim_ticker_tracker (must run before fetch to pick up new portfolio tickers)
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt seed
+      - poetry run dbt run --select dim_ticker_tracker
+
   dbt:test:
     desc: Run DBT tests
     dir: portfolio_analytics/dbt
@@ -214,6 +222,7 @@ tasks:
     desc: Refresh all data (replicate from Postgres, fetch vendor data, run dbt)
     cmds:
       - task: replicate
+      - task: dbt:ticker-tracker
       - task: fetch
       - task: dbt
 

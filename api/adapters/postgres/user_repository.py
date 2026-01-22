@@ -17,11 +17,11 @@ class PostgresUserRepository(UserRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO users (id, email, password_hash, created_at)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id, email, password_hash, created_at
+                INSERT INTO users (id, email, password_hash, created_at, is_admin)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id, email, password_hash, created_at, is_admin
                 """,
-                (user.id, user.email, user.password_hash, user.created_at),
+                (user.id, user.email, user.password_hash, user.created_at, user.is_admin),
             )
             row = cur.fetchone()
 
@@ -35,7 +35,7 @@ class PostgresUserRepository(UserRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, email, password_hash, created_at
+                SELECT id, email, password_hash, created_at, is_admin
                 FROM users
                 WHERE id = %s
                 """,
@@ -53,7 +53,7 @@ class PostgresUserRepository(UserRepository):
         with self._pool.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, email, password_hash, created_at
+                SELECT id, email, password_hash, created_at, is_admin
                 FROM users
                 WHERE email = %s
                 """,
@@ -84,4 +84,5 @@ class PostgresUserRepository(UserRepository):
             email=row[1],
             password_hash=row[2],
             created_at=row[3],
+            is_admin=row[4] if len(row) > 4 else False,
         )

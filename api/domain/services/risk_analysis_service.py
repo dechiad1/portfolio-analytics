@@ -23,13 +23,14 @@ class RiskAnalysisService:
         self,
         portfolio_id: UUID,
         user_id: UUID,
+        is_admin: bool = False,
     ) -> RiskAnalysis:
         """Analyze risks for a portfolio using LLM with macro context."""
         # Get portfolio
         portfolio = self._portfolio_repo.get_by_id(portfolio_id)
         if portfolio is None:
             raise ValueError(f"Portfolio {portfolio_id} not found")
-        if portfolio.user_id != user_id:
+        if not is_admin and portfolio.user_id != user_id:
             raise ValueError("Access denied to this portfolio")
 
         # Get holdings

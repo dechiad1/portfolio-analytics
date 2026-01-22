@@ -3,6 +3,9 @@ import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorMessage } from '../../shared/components/ErrorMessage';
 import { useSecuritiesState } from './useSecuritiesState';
 import { SecuritiesTable } from './components/SecuritiesTable';
+import { AddTickerModal } from './components/AddTickerModal';
+import { PendingTickersBanner } from './components/PendingTickersBanner';
+import { addTicker } from './securitiesApi';
 import styles from './SecuritiesPage.module.css';
 
 type TimePeriod = '1Y' | '5Y';
@@ -11,8 +14,9 @@ type TimePeriod = '1Y' | '5Y';
  * SecuritiesPage displays all available securities from DuckDB.
  */
 export function SecuritiesPage() {
-  const { securities, isLoading, error, refetch, clearError } = useSecuritiesState();
+  const { securities, userAddedTickers, isLoading, error, refetch, clearError } = useSecuritiesState();
   const [period, setPeriod] = useState<TimePeriod>('1Y');
+  const [showAddTickerModal, setShowAddTickerModal] = useState(false);
 
   if (isLoading) {
     return (
@@ -32,6 +36,12 @@ export function SecuritiesPage() {
           </p>
         </div>
         <div className={styles.headerRight}>
+          <button
+            className={styles.trackButton}
+            onClick={() => setShowAddTickerModal(true)}
+          >
+            + Track Ticker
+          </button>
           <div className={styles.periodToggle}>
             <button
               className={`${styles.periodButton} ${period === '1Y' ? styles.periodButtonActive : ''}`}
@@ -64,6 +74,11 @@ export function SecuritiesPage() {
         </div>
       )}
 
+      <PendingTickersBanner
+        userAddedTickers={userAddedTickers}
+        securities={securities}
+      />
+
       {securities.length === 0 ? (
         <div className={styles.emptyState}>
           <svg
@@ -92,6 +107,14 @@ export function SecuritiesPage() {
         </div>
       ) : (
         <SecuritiesTable securities={securities} period={period} />
+      )}
+
+      {showAddTickerModal && (
+        <AddTickerModal
+          onSubmit={addTicker}
+          onClose={() => setShowAddTickerModal(false)}
+          onSuccess={refetch}
+        />
       )}
     </div>
   );

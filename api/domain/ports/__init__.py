@@ -7,6 +7,8 @@ from domain.ports.analytics_repository import (
     TickerPerformance,
     FundMetadata,
 )
+from domain.ports.ticker_validator import TickerValidator, ValidatedTicker
+from domain.ports.ticker_repository import TickerRepository, UserAddedTicker
 
 __all__ = [
     "SessionRepository",
@@ -16,4 +18,8 @@ __all__ = [
     "AnalyticsRepository",
     "TickerPerformance",
     "FundMetadata",
+    "TickerValidator",
+    "ValidatedTicker",
+    "TickerRepository",
+    "UserAddedTicker",
 ]

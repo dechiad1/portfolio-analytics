@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ApiClientError } from '../../shared/api/client';
-import { fetchSecurities, type Security } from './securitiesApi';
+import {
+  fetchSecurities,
+  fetchUserAddedTickers,
+  type Security,
+  type UserAddedTicker,
+} from './securitiesApi';
 
 /**
  * State and operations for managing the securities list.
@@ -8,6 +13,8 @@ import { fetchSecurities, type Security } from './securitiesApi';
 interface SecuritiesState {
   /** List of all securities */
   securities: Security[];
+  /** List of user-added tickers (may not have data yet) */
+  userAddedTickers: UserAddedTicker[];
   /** Loading state for initial fetch */
   isLoading: boolean;
   /** Error message from last operation */
@@ -23,6 +30,7 @@ interface SecuritiesState {
  */
 export function useSecuritiesState(): SecuritiesState {
   const [securities, setSecurities] = useState<Security[]>([]);
+  const [userAddedTickers, setUserAddedTickers] = useState<UserAddedTicker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +39,13 @@ export function useSecuritiesState(): SecuritiesState {
     setError(null);
 
     try {
-      const data = await fetchSecurities();
-      setSecurities(data);
+      // Fetch both in parallel
+      const [securitiesData, userAddedData] = await Promise.all([
+        fetchSecurities(),
+        fetchUserAddedTickers(),
+      ]);
+      setSecurities(securitiesData);
+      setUserAddedTickers(userAddedData);
     } catch (err) {
       const message =
         err instanceof ApiClientError ? err.detail : 'Failed to load securities';
@@ -56,6 +69,7 @@ export function useSecuritiesState(): SecuritiesState {
 
   return {
     securities,
+    userAddedTickers,
     isLoading,
     error,
     refetch,

@@ -22,6 +22,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
 
 
+from domain.models.user import User
+
+
 def get_current_user_id(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
@@ -35,6 +38,20 @@ def get_current_user_id(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def get_current_user_full(
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> User:
+    """Get the full current user object including is_admin."""
+    user = auth_service.get_user(user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
 
 
 @router.post(

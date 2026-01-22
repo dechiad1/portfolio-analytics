@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
+from domain.models.user import User
 from domain.services.portfolio_service import (
     PortfolioService,
     PortfolioNotFoundError,
@@ -32,7 +33,7 @@ from api.schemas.holding import (
 from api.schemas.risk_analysis import RiskAnalysisResponse, RiskItem
 from api.mappers.portfolio_mapper import PortfolioMapper
 from api.mappers.holding_mapper import HoldingMapper
-from api.routers.auth import get_current_user_id
+from api.routers.auth import get_current_user_id, get_current_user_full
 from domain.services.risk_analysis_service import RiskAnalysisService
 from dependencies import get_portfolio_service, get_holding_service, get_risk_analysis_service
 
@@ -59,10 +60,17 @@ def list_portfolios(
     summary="List all portfolios with user info",
 )
 def list_all_portfolios(
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
 ) -> AllPortfoliosListResponse:
-    """List all portfolios with owner email (for admin view)."""
-    portfolios_with_users = portfolio_service.get_all_portfolios_with_users()
+    """List portfolios with owner email.
+
+    Admin users see all portfolios. Regular users see only their own.
+    """
+    portfolios_with_users = portfolio_service.get_all_portfolios_with_users(
+        user_id=current_user.id,
+        is_admin=current_user.is_admin,
+    )
     return PortfolioMapper.to_all_portfolios_response(portfolios_with_users)
 
 
@@ -81,7 +89,7 @@ def create_portfolio(
     portfolio = portfolio_service.create_portfolio(
         user_id=user_id,
         name=request.name,
-        description=request.description,
+        base_currency=request.base_currency,
     )
     return PortfolioMapper.to_response(portfolio)
 
@@ -93,12 +101,14 @@ def create_portfolio(
 )
 def get_portfolio(
     portfolio_id: UUID,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
 ) -> PortfolioResponse:
     """Get a portfolio by ID."""
     try:
-        portfolio = portfolio_service.get_portfolio(portfolio_id, user_id)
+        portfolio = portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
         return PortfolioMapper.to_response(portfolio)
     except PortfolioNotFoundError:
         raise HTTPException(
@@ -120,16 +130,17 @@ def get_portfolio(
 def update_portfolio(
     portfolio_id: UUID,
     request: UpdatePortfolioRequest,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
 ) -> PortfolioResponse:
     """Update a portfolio."""
     try:
         portfolio = portfolio_service.update_portfolio(
             portfolio_id=portfolio_id,
-            user_id=user_id,
+            user_id=current_user.id,
             name=request.name,
-            description=request.description,
+            base_currency=request.base_currency,
+            is_admin=current_user.is_admin,
         )
         return PortfolioMapper.to_response(portfolio)
     except PortfolioNotFoundError:
@@ -151,12 +162,14 @@ def update_portfolio(
 )
 def delete_portfolio(
     portfolio_id: UUID,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
 ) -> None:
     """Delete a portfolio and all its holdings."""
     try:
-        portfolio_service.delete_portfolio(portfolio_id, user_id)
+        portfolio_service.delete_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
     except PortfolioNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -176,12 +189,14 @@ def delete_portfolio(
 )
 def get_portfolio_summary(
     portfolio_id: UUID,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
 ) -> PortfolioSummaryResponse:
     """Get portfolio summary with asset type, class, and sector breakdowns."""
     try:
-        summary = portfolio_service.get_portfolio_summary(portfolio_id, user_id)
+        summary = portfolio_service.get_portfolio_summary(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
         return PortfolioMapper.to_summary_response(summary)
     except PortfolioNotFoundError:
         raise HTTPException(
@@ -203,12 +218,14 @@ def get_portfolio_summary(
 )
 def list_holdings(
     portfolio_id: UUID,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
 ) -> HoldingListResponse:
     """List all holdings in a portfolio."""
     try:
-        holdings = portfolio_service.get_portfolio_holdings(portfolio_id, user_id)
+        holdings = portfolio_service.get_portfolio_holdings(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
         return HoldingMapper.to_list_response(holdings)
     except PortfolioNotFoundError:
         raise HTTPException(
@@ -231,14 +248,16 @@ def list_holdings(
 def create_holding(
     portfolio_id: UUID,
     request: CreateHoldingRequest,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> HoldingResponse:
     """Add a new holding to a portfolio."""
     try:
         # Verify access to portfolio
-        portfolio_service.get_portfolio(portfolio_id, user_id)
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
 
         holding = holding_service.create_holding(
             portfolio_id=portfolio_id,
@@ -280,14 +299,16 @@ def create_holding(
 async def upload_holdings(
     portfolio_id: UUID,
     file: UploadFile,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> BulkCreateHoldingsResponse:
     """Upload a CSV file to bulk add holdings to a portfolio."""
     try:
         # Verify access to portfolio
-        portfolio_service.get_portfolio(portfolio_id, user_id)
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
 
         if file.content_type not in ("text/csv", "application/csv", "text/plain"):
             raise HTTPException(
@@ -332,14 +353,16 @@ def update_holding(
     portfolio_id: UUID,
     holding_id: UUID,
     request: UpdateHoldingRequest,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> HoldingResponse:
     """Update a holding in a portfolio."""
     try:
         # Verify access to portfolio
-        portfolio_service.get_portfolio(portfolio_id, user_id)
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
 
         # Verify holding belongs to portfolio
         existing = holding_service.get_holding(holding_id)
@@ -393,14 +416,16 @@ def update_holding(
 def delete_holding(
     portfolio_id: UUID,
     holding_id: UUID,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
     holding_service: Annotated[HoldingService, Depends(get_holding_service)],
 ) -> None:
     """Delete a holding from a portfolio."""
     try:
         # Verify access to portfolio
-        portfolio_service.get_portfolio(portfolio_id, user_id)
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
 
         # Verify holding belongs to portfolio
         existing = holding_service.get_holding(holding_id)
@@ -436,7 +461,7 @@ def delete_holding(
 )
 def analyze_portfolio_risks(
     portfolio_id: UUID,
-    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user_full)],
     risk_service: Annotated[RiskAnalysisService, Depends(get_risk_analysis_service)],
 ) -> RiskAnalysisResponse:
     """Generate AI-powered risk analysis for a portfolio.
@@ -451,7 +476,9 @@ def analyze_portfolio_risks(
     Returns actionable mitigation strategies for each risk.
     """
     try:
-        analysis = risk_service.analyze_portfolio_risks(portfolio_id, user_id)
+        analysis = risk_service.analyze_portfolio_risks(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
         return RiskAnalysisResponse(
             risks=[
                 RiskItem(
