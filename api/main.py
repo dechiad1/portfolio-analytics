@@ -6,6 +6,7 @@ from api.routers import (
     sessions_router,
     analytics_router,
     auth_router,
+    oauth_router,
     portfolios_router,
     tickers_router,
 )
@@ -32,6 +33,9 @@ def create_app() -> FastAPI:
 
     # Auth routes (no auth required)
     app.include_router(auth_router)
+
+    # OAuth routes (no auth required)
+    app.include_router(oauth_router)
 
     # Portfolio routes (auth required)
     app.include_router(portfolios_router)

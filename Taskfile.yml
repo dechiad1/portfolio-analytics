@@ -216,6 +216,49 @@ tasks:
       - echo "All data volumes removed. Run 'task setup' to start fresh."
 
   # =============================================================================
+  # OAUTH USER MANAGEMENT
+  # =============================================================================
+  oauth:create-user:
+    desc: Create a test user in mock-oauth2-server (EMAIL and SUBJECT vars required)
+    vars:
+      EMAIL: '{{.EMAIL | default "test@example.com"}}'
+      SUBJECT: '{{.SUBJECT | default "test-user-001"}}'
+    cmds:
+      - |
+        echo "Note: mock-oauth2-server creates users interactively during login."
+        echo "When you authenticate, enter:"
+        echo "  Email: {{.EMAIL}}"
+        echo "  Subject: {{.SUBJECT}}"
+        echo ""
+        echo "The user will be created in the application database after successful OAuth flow."
+
+  oauth:create-admin:
+    desc: Create admin user (dechiada@gmail.com) - run OAuth flow with this email
+    cmds:
+      - |
+        echo "To create an admin user:"
+        echo "1. Go to http://localhost:3000/login"
+        echo "2. Click 'Sign in with Identity Provider'"
+        echo "3. In the mock-oauth2-server login form, enter:"
+        echo "   Email: dechiada@gmail.com"
+        echo "   Subject: admin-user-001"
+        echo ""
+        echo "The user will be created with is_admin=true in the database."
+
+  oauth:status:
+    desc: Check if mock-oauth2-server is running and accessible
+    cmds:
+      - |
+        if curl -s http://localhost:8080/default/.well-known/openid-configuration > /dev/null 2>&1; then
+          echo "mock-oauth2-server is running and accessible"
+          echo ""
+          echo "OpenID Configuration:"
+          curl -s http://localhost:8080/default/.well-known/openid-configuration | python -m json.tool
+        else
+          echo "mock-oauth2-server is not accessible. Run 'task docker:up' first."
+        fi
+
+  # =============================================================================
   # DEVELOPMENT UTILITIES
   # =============================================================================
   refresh:

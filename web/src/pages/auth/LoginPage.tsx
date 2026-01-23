@@ -1,40 +1,29 @@
-import { useState, useCallback, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/contexts/AuthContext';
+import { getOAuthLoginUrl } from '../../shared/api/authApi';
 import styles from './AuthPage.module.css';
 
 /**
- * LoginPage provides email/password login form.
+ * LoginPage provides OAuth-based login via Identity Provider.
  */
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate('/portfolios');
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
-  const handleSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      setError(null);
-      setIsSubmitting(true);
+  const handleSignIn = () => {
+    // Redirect to OAuth provider
+    window.location.href = getOAuthLoginUrl();
+  };
 
-      const result = await login({ email, password });
-
-      if (result.success) {
-        navigate('/portfolios');
-      } else {
-        setError(result.error || 'Login failed');
-      }
-
-      setIsSubmitting(false);
-    },
-    [email, password, login, navigate]
-  );
-
-  if (authLoading) {
+  if (isLoading) {
     return (
       <div className={styles.page}>
         <div className={styles.container}>
@@ -64,65 +53,24 @@ export function LoginPage() {
             <line x1="18" y1="20" x2="18" y2="4" />
             <line x1="6" y1="20" x2="6" y2="16" />
           </svg>
-          <h1 className={styles.title}>Welcome Back</h1>
-          <p className={styles.subtitle}>Sign in to your account to continue</p>
+          <h1 className={styles.title}>Portfolio Analytics</h1>
+          <p className={styles.subtitle}>
+            Sign in to manage your investment portfolios
+          </p>
         </div>
 
-        <form className={styles.form} onSubmit={handleSubmit}>
-          {error && (
-            <div className={styles.error} role="alert">
-              {error}
-            </div>
-          )}
-
-          <div className={styles.field}>
-            <label htmlFor="email" className={styles.label}>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              className={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="password" className={styles.label}>
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              className={styles.input}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-              disabled={isSubmitting}
-            />
-          </div>
-
+        <div className={styles.oauthSection}>
           <button
-            type="submit"
+            type="button"
             className={styles.submitButton}
-            disabled={isSubmitting}
+            onClick={handleSignIn}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign In'}
+            Sign in with Identity Provider
           </button>
-        </form>
+        </div>
 
         <p className={styles.footer}>
-          Don't have an account?{' '}
-          <Link to="/register" className={styles.link}>
-            Create one
-          </Link>
+          By signing in, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
     </div>

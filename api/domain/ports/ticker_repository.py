@@ -1,19 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from datetime import datetime
 from uuid import UUID
 
-from domain.ports.ticker_validator import ValidatedTicker
-
-
-@dataclass
-class UserAddedTicker:
-    """Represents a ticker added by a user."""
-
-    ticker: str
-    display_name: str
-    asset_type: str
-    added_at: datetime
+from domain.value_objects import ValidatedTicker, UserAddedTicker
 
 
 class TickerRepository(ABC):

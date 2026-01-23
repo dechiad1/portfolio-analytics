@@ -1,28 +1,25 @@
 import { api } from './client';
-import type {
-  User,
-  AuthTokens,
-  LoginCredentials,
-  RegisterCredentials,
-} from '../types';
+import type { User } from '../types';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
- * Register a new user.
+ * Get the OAuth login URL (redirects to IDP).
  */
-export async function register(credentials: RegisterCredentials): Promise<AuthTokens> {
-  return api.post<AuthTokens>('/auth/register', credentials, { skipAuth: true });
+export function getOAuthLoginUrl(): string {
+  return `${API_URL}/oauth/login`;
 }
 
 /**
- * Login with email and password.
+ * Logout - clears session cookie via API.
  */
-export async function login(credentials: LoginCredentials): Promise<AuthTokens> {
-  return api.post<AuthTokens>('/auth/login', credentials, { skipAuth: true });
+export async function logout(): Promise<void> {
+  return api.post<void>('/oauth/logout', undefined, { skipAuth: true });
 }
 
 /**
- * Get the current authenticated user.
+ * Get the current authenticated user (from session cookie).
  */
 export async function getCurrentUser(): Promise<User> {
-  return api.get<User>('/auth/me');
+  return api.get<User>('/oauth/me', { skipAuth: true });
 }

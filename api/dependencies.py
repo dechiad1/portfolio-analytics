@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 from pydantic import BaseModel
@@ -38,6 +38,15 @@ class AuthConfig(BaseModel):
     token_expiry_hours: int = 24
 
 
+class OAuthConfig(BaseModel):
+    """OAuth configuration."""
+
+    issuer_url: str
+    client_id: str
+    client_secret: str
+    redirect_uri: str
+
+
 class LLMConfig(BaseModel):
     """LLM configuration."""
 
@@ -51,6 +60,7 @@ class ServerConfig(BaseModel):
     host: str
     port: int
     cors_origins: list[str]
+    frontend_url: str = "http://localhost:3000"
 
 
 class AppConfig(BaseModel):
@@ -60,6 +70,7 @@ class AppConfig(BaseModel):
     server: ServerConfig
     auth: AuthConfig
     llm: LLMConfig
+    oauth: Optional[OAuthConfig] = None
 
 
 def _resolve_env_vars(value: Any) -> Any:
@@ -99,6 +110,8 @@ _analytics_repository = None
 _session_service = None
 _holding_service = None
 _auth_service = None
+_oauth_provider = None
+_oauth_service = None
 _portfolio_service = None
 _llm_repository = None
 _risk_analysis_service = None
@@ -213,6 +226,42 @@ def get_auth_service():
     return _auth_service
 
 
+def get_oauth_provider():
+    """Get or create OAuth provider instance."""
+    global _oauth_provider
+    if _oauth_provider is None:
+        from adapters.oauth.mock_oauth_provider import MockOAuth2Provider
+
+        config = load_config()
+        if config.oauth is None:
+            raise RuntimeError("OAuth not configured")
+
+        _oauth_provider = MockOAuth2Provider(
+            issuer_url=config.oauth.issuer_url,
+            client_id=config.oauth.client_id,
+            client_secret=config.oauth.client_secret,
+            redirect_uri=config.oauth.redirect_uri,
+        )
+    return _oauth_provider
+
+
+def get_oauth_service():
+    """Get or create OAuthService instance for FastAPI dependency injection."""
+    global _oauth_service
+    if _oauth_service is None:
+        from domain.services.oauth_service import OAuthService
+
+        config = load_config()
+        _oauth_service = OAuthService(
+            user_repository=get_user_repository(),
+            oauth_provider=get_oauth_provider(),
+            jwt_secret=config.auth.jwt_secret,
+            jwt_algorithm=config.auth.jwt_algorithm,
+            token_expiry_hours=config.auth.token_expiry_hours,
+        )
+    return _oauth_service
+
+
 def get_portfolio_service():
     """Get or create PortfolioService instance for FastAPI dependency injection."""
     global _portfolio_service
@@ -305,7 +354,7 @@ def reset_dependencies() -> None:
     global _postgres_pool, _session_repository, _holding_repository
     global _user_repository, _portfolio_repository
     global _analytics_repository, _session_service, _holding_service
-    global _auth_service, _portfolio_service
+    global _auth_service, _oauth_provider, _oauth_service, _portfolio_service
     global _llm_repository, _risk_analysis_service
     global _compute_analytics_command
     global _ticker_validator, _ticker_repository, _ticker_service
@@ -322,6 +371,8 @@ def reset_dependencies() -> None:
     _session_service = None
     _holding_service = None
     _auth_service = None
+    _oauth_provider = None
+    _oauth_service = None
     _portfolio_service = None
     _llm_repository = None
     _risk_analysis_service = None
