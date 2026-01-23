@@ -2,286 +2,103 @@
 
 A modern data stack project for analyzing investment portfolio performance, risk metrics, and benchmarking.
 
-## 🎯 What This Project Does
+## Setup
 
-- Fetches historical price data for your investment holdings
-- Calculates performance metrics (returns, volatility, Sharpe ratio)
-- Compares performance vs. S&P 500 benchmark
-- Analyzes asset class distribution
-- Generates interactive dashboards
+### Prerequisites
+- Docker Desktop
+- Python 3.11+ with Poetry
+- Node.js 18+
+- Task (`brew install go-task/tap/go-task`)
 
-## 🏗️ Architecture
+### Quick Start
+1. `task docker:up` - Start PostgreSQL
+2. `task db:migrate` - Run database migrations
+3. `task db:seed` - Seed securities data
+4. `task run:api` - Start API server (port 8000)
+5. `cd web && npm install && npm run dev` - Start frontend (port 5173)
 
-```
-Data Sources (APIs) → Python Ingestion → DuckDB → DBT Transformations → Visualizations
-```
+### Full Data Setup (for analytics)
+`task setup` - Complete setup including price data fetch and dbt transformations
 
-## 📦 Tech Stack
-
-### Backend & Data
-- **FastAPI**: Modern Python web framework for API
-- **PostgreSQL**: Relational database for user sessions and holdings
-- **Python**: Data ingestion and orchestration
-- **DuckDB**: Embedded analytical database
-- **DBT**: SQL-based data transformations
-- **Alembic**: Database migration management
-
-### Frontend & Visualization
-- **React**: Modern web UI for portfolio management
-- **Streamlit**: Interactive dashboards
-- **yfinance**: Free financial data API
-
-### Infrastructure
-- **Docker**: Container orchestration for local development
-- **Poetry**: Python dependency management
-
-## 🚀 Quick Start
-
-### Option 1: Complete Local Setup (Recommended)
-
-This project now includes a FastAPI backend with PostgreSQL. The easiest way to get started:
-
-```bash
-# Install Task (if not already installed)
-# On macOS:
-brew install go-task/tap/go-task
-
-# Start PostgreSQL in Docker and run migrations
-task setup:local
-
-# Install Python dependencies (for analytics)
-poetry install
-
-# Run the API server
-cd api && poetry run uvicorn main:app --reload
-
-# (In another terminal) Run the Streamlit dashboard
-task run:ui
-```
-
-### Option 2: Manual Setup
-
-#### 1a. Setup Environment
-
-```bash
-# Install dependencies using Poetry
-poetry install
-```
-
-#### 1b. Setup Database (Docker)
-
-```bash
-# Start PostgreSQL container
-task docker:up
-
-# Run database migrations
-task db:migrate
-```
-
-Or without Docker:
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate it
-# On Mac/Linux:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Configure Your Holdings
-
-Edit `dbt/seeds/holdings.csv` with your actual portfolio holdings.
-
-### 3. Fetch Data
-
-```bash
-# Fetch historical prices for all holdings
-python scripts/ingest_prices.py
-
-# Fetch benchmark data (S&P 500, risk-free rate)
-python scripts/ingest_benchmarks.py
-```
-
-### 4. Run DBT Transformations
-
-```bash
-cd dbt
-dbt deps
-dbt seed    # Load holdings CSV
-dbt run     # Run all transformations
-dbt test    # Run data quality tests
-```
-
-### 5. View Dashboard
-
-```bash
-# Run Streamlit dashboard
-streamlit run app.py
-```
-
-Open browser to http://localhost:8501
-
-## 📁 Project Structure
-
-```
-portfolio-analytics/
-├── api/                           # FastAPI backend (Hexagonal Architecture)
-│   ├── config/                    # Environment-specific configs
-│   ├── api/                       # API layer (routers, schemas, mappers)
-│   ├── domain/                    # Core business logic
-│   ├── adapters/                  # External integrations (Postgres, DuckDB)
-│   ├── alembic/                   # Database migrations
-│   └── main.py                    # Application entry point
-├── web/                           # React frontend
-│   └── src/                       # React components & pages
-├── docker/                        # Docker infrastructure
-│   ├── docker-compose.yml         # PostgreSQL service
-│   └── README.md                  # Docker setup guide
-├── data/
-│   ├── portfolio.duckdb          # DuckDB database (created on first run)
-│   └── raw/                       # Raw data files (optional backup)
-├── dbt/
-│   ├── models/
-│   │   ├── staging/               # Clean raw data
-│   │   │   ├── stg_prices.sql
-│   │   │   ├── stg_holdings.sql
-│   │   │   └── stg_benchmarks.sql
-│   │   ├── intermediate/          # Calculate returns
-│   │   │   ├── int_daily_returns.sql
-│   │   │   └── int_monthly_returns.sql
-│   │   └── marts/                 # Final analytics tables
-│   │       ├── fct_performance.sql
-│   │       ├── fct_risk_metrics.sql
-│   │       └── dim_asset_classes.sql
-│   ├── seeds/
-│   │   └── holdings.csv           # Your portfolio holdings
-│   ├── tests/
-│   │   └── assert_positive_prices.sql
-│   ├── dbt_project.yml
-│   └── profiles.yml
-├── scripts/
-│   ├── ingest_prices.py           # Fetch price data
-│   ├── ingest_benchmarks.py       # Fetch benchmark data
-│   └── config.py                  # Configuration
-├── docs/
-│   └── setup_guide.md             # Detailed setup instructions
-├── app.py                         # Streamlit dashboard
-├── Taskfile.yml                   # Task automation
-└── README.md                      # This file
-```
-
-## 🎓 Learning Path
-
-### Phase 1: Get It Running (Week 1)
-1. Follow Quick Start guide
-2. Fetch data for your holdings
-3. Run DBT models
-4. View basic dashboard
-
-### Phase 2: Understand the Code (Week 2)
-1. Read through DBT models
-2. Understand how returns are calculated
-3. Learn Sharpe ratio formula
-4. Explore DuckDB database
-
-### Phase 3: Extend It (Week 3+)
-1. Add more metrics (max drawdown, correlation)
-2. Build Monte Carlo simulations
-3. Add email alerts
-4. Schedule daily data updates
-
-## 📊 Key Metrics Calculated
-
-- **Total Return**: Percentage gain/loss since investment start
-- **Annualized Return**: Compound annual growth rate (CAGR)
-- **Volatility**: Standard deviation of returns (annualized)
-- **Sharpe Ratio**: Risk-adjusted return metric
-- **Benchmark Comparison**: Performance vs. S&P 500
-- **Asset Class Distribution**: Portfolio breakdown by type
-
-## 🔧 Configuration
-
-### Edit Your Holdings
-
-`dbt/seeds/holdings.csv`:
-```csv
-ticker,name,asset_class,sector,broker,purchase_date
-JPM,JP Morgan Chase,U.S. Stocks,Financials,Chase,2022-01-15
-VFIAX,Vanguard 500 Index,U.S. Stocks,Broad Market,Vanguard,2022-01-15
-```
-
-### Adjust Date Ranges
-
-In `scripts/config.py`:
-```python
-START_DATE = '2022-01-01'  # Your investment start date
-END_DATE = '2025-10-27'     # Today or analysis end date
-RISK_FREE_RATE = 0.03       # Assumed risk-free rate (3%)
-```
-
-## 🐛 Troubleshooting
-
-### yfinance not working?
-- Yahoo Finance can be flaky. Try Alpha Vantage instead (requires free API key)
-- See `scripts/ingest_prices_alphavantage.py` for alternative
-
-### DuckDB errors?
-- Delete `data/portfolio.duckdb` and re-run ingestion
-- Make sure DBT profile is configured correctly
-
-### DBT errors?
-- Run `dbt debug` to check configuration
-- Verify `profiles.yml` is in correct location (`~/.dbt/` or `dbt/`)
-
-## 📚 Resources
-
-### Learning DBT
-- [DBT Docs](https://docs.getdbt.com/)
-- [DBT Learn](https://courses.getdbt.com/)
-
-### Learning DuckDB
-- [DuckDB Docs](https://duckdb.org/docs/)
-- [Why DuckDB](https://duckdb.org/why_duckdb)
-
-### Portfolio Theory
-- "A Random Walk Down Wall Street" - Burton Malkiel
-- Modern Portfolio Theory basics
-- Sharpe ratio explained
-
-## 🚀 Next Steps
-
-1. **Automate Updates**: Add GitHub Actions or cron job for daily data refresh
-2. **Deploy Dashboard**: Host on Streamlit Cloud or Heroku
-3. **Add Features**: Tax-loss harvesting, rebalancing recommendations
-4. **Share**: Show to friends, add to resume, demo in interviews
-
-## 🤝 Contributing
-
-This is a learning project! Feel free to:
-- Add new metrics
-- Improve visualizations
-- Add tests
-- Share improvements
-
-## 📝 License
-
-MIT License - Feel free to use for learning and portfolio projects
-
-## 💡 Interview Tips
-
-When discussing this project:
-- Emphasize **end-to-end ownership** (data → transformations → viz)
-- Highlight **modern data stack** knowledge (DBT, DuckDB)
-- Discuss **financial concepts** (Sharpe ratio, benchmarking)
-- Show **production thinking** (tests, documentation, reproducibility)
+### Data Refresh
+`task refresh` - Fetches latest price data and rebuilds analytical tables
 
 ---
 
-**Questions? Issues? Want to extend this?** Open an issue or reach out!
+## Transactional Tables (PostgreSQL)
 
-Good luck with your portfolio analytics journey! 📈
+| Table | Purpose |
+|-------|---------|
+| `users` | User accounts (email, password_hash, is_admin) |
+| `portfolio` | User portfolios (name, base_currency, FK to users) |
+| `security_registry` | Canonical security identity (asset_type: EQUITY/ETF/BOND/CASH, currency, display_name) |
+| `security_identifier` | Multiple identifiers per security (TICKER, CUSIP, ISIN with source tracking) |
+| `equity_details` | Equity/ETF details (ticker, exchange, sector, industry) |
+| `bond_details` | Bond details (issuer, coupon_type, coupon_rate, maturity_date, payment_frequency) |
+| `transaction_ledger` | Append-only trade history (BUY, SELL, DEPOSIT, WITHDRAW, DIVIDEND, COUPON, FEE) |
+| `position_current` | Materialized current positions (portfolio_id, security_id, quantity, avg_cost) |
+| `cash_balance` | Cash balance per portfolio per currency |
+
+---
+
+## Analytical Tables (DuckDB via dbt)
+
+| Table | Purpose |
+|-------|---------|
+| `dim_ticker_tracker` | Unified ticker list combining seed file + PostgreSQL portfolios |
+| `dim_funds` | Comprehensive security dimension with metadata + performance metrics |
+| `fct_performance` | Performance calculations (1Y/5Y returns, volatility, Sharpe ratio, benchmark comparison) |
+| `fact_price_daily` | Daily prices for all securities (equities from yfinance, bonds from Treasury yields) |
+| `dim_security` | Security master replicated from PostgreSQL |
+
+Data flow: PostgreSQL -> replicate -> DuckDB staging -> dbt transformations -> marts
+
+---
+
+## Domain Entities & Holding Relationship
+
+**User** (`api/domain/models/user.py`)
+- id, email, password_hash, is_admin, created_at
+
+**Portfolio** (`api/domain/models/portfolio.py`)
+- id, user_id, name, base_currency, created_at, updated_at
+
+**Holding** (`api/domain/models/holding.py`)
+- A read model combining data from multiple transactional tables:
+  - `position_current.quantity` and `position_current.avg_cost`
+  - `security_registry.display_name` and `asset_type`
+  - `equity_details.ticker`, `sector`, `industry`
+  - Current price from DuckDB `dim_funds` mart
+
+Holding is not a single table - it's assembled by joining:
+```
+position_current + security_registry + equity_details + dim_funds(price)
+```
+
+---
+
+## User Journeys
+
+**1. View Securities List** (Securities Page)
+- Source: DuckDB `dim_funds` mart
+- Shows: ticker, name, asset_class, 1Y/5Y returns, volatility, Sharpe ratio
+- API: `GET /analytics/securities`
+
+**2. Track New Ticker**
+- Flow: User enters ticker -> yfinance validates -> PostgreSQL insert (security_registry + equity_details)
+- API: `POST /tickers/track`
+- Note: Run `task refresh` to fetch price data for new tickers
+
+**3. View Portfolio Holdings** (Portfolio Detail Page)
+- Source: PostgreSQL position_current + DuckDB price data
+- Shows: ticker, quantity, avg_cost, current_price, market_value, gain/loss
+- API: `GET /portfolios/{id}/holdings`
+
+**4. Add Holding to Portfolio**
+- Flow: User selects ticker from search -> auto-populates sector/price -> saves to position_current
+- Source for auto-populate: `GET /analytics/tickers/{ticker}/details` (DuckDB)
+- API: `POST /portfolios/{id}/holdings`
+
+**5. Historical Price Lookup**
+- When purchase date changes, fetches historical price
+- API: `GET /analytics/tickers/{ticker}/price?date=YYYY-MM-DD`
