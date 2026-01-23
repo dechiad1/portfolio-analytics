@@ -1,12 +1,7 @@
-from fastapi import HTTPException
-
-from api.schemas.ticker import (
-    AddTickerResponse,
-    UserAddedTickerResponse,
-    UserAddedTickersListResponse,
-)
+from domain.exceptions import TickerAlreadyTrackedException, InvalidTickerException
 from domain.ports.ticker_repository import TickerRepository
 from domain.ports.ticker_validator import TickerValidator
+from domain.value_objects import ValidatedTicker, UserAddedTicker
 
 
 class TickerService:
@@ -20,54 +15,36 @@ class TickerService:
         self._validator = validator
         self._repository = repository
 
-    def get_user_added_tickers(self) -> UserAddedTickersListResponse:
+    def get_user_added_tickers(self) -> list[UserAddedTicker]:
         """Get all tickers that were manually added by users."""
-        tickers = self._repository.get_user_added_tickers()
-        return UserAddedTickersListResponse(
-            tickers=[
-                UserAddedTickerResponse(
-                    ticker=t.ticker,
-                    display_name=t.display_name,
-                    asset_type=t.asset_type,
-                    added_at=t.added_at,
-                )
-                for t in tickers
-            ],
-            count=len(tickers),
-        )
+        return self._repository.get_user_added_tickers()
 
-    def add_ticker(self, ticker: str) -> AddTickerResponse:
+    def add_ticker(self, ticker: str) -> ValidatedTicker:
         """
         Validate and add a ticker to the security registry.
 
+        Args:
+            ticker: The ticker symbol to add
+
+        Returns:
+            ValidatedTicker with the added ticker's metadata
+
         Raises:
-            HTTPException(400): Ticker already tracked
-            HTTPException(400): Invalid ticker
+            TickerAlreadyTrackedException: If ticker is already being tracked
+            InvalidTickerException: If ticker cannot be validated
         """
         ticker_upper = ticker.upper().strip()
 
         # Check if already tracked
         if self._repository.ticker_exists(ticker_upper):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Ticker {ticker_upper} is already being tracked",
-            )
+            raise TickerAlreadyTrackedException(ticker_upper)
 
         # Validate via external service
         validated = self._validator.validate(ticker_upper)
         if validated is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid ticker: {ticker_upper} not found on Yahoo Finance",
-            )
+            raise InvalidTickerException(ticker_upper, "not found on Yahoo Finance")
 
         # Persist to database
         self._repository.add_security(validated)
 
-        return AddTickerResponse(
-            ticker=validated.ticker,
-            display_name=validated.display_name,
-            asset_type=validated.asset_type,
-            exchange=validated.exchange,
-            message=f"Successfully added {validated.ticker}. Run 'task refresh' to fetch historical data.",
-        )
+        return validated

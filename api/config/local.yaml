@@ -23,3 +23,9 @@ auth:
 llm:
   anthropic_api_key: ${ANTHROPIC_API_KEY}
   model: claude-sonnet-4-20250514
+
+oauth:
+  issuer_url: http://localhost:8080/default
+  client_id: portfolio-analytics
+  client_secret: portfolio-secret
+  redirect_uri: http://localhost:8000/oauth/callback

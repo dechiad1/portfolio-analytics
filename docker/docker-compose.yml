@@ -19,6 +19,27 @@ services:
       retries: 5
     restart: unless-stopped
 
+  mock-oauth2:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    container_name: portfolio-analytics-oauth
+    ports:
+      - "8080:8080"
+    environment:
+      JSON_CONFIG: |
+        {
+          "interactiveLogin": true
+        }
+    volumes:
+      - oauth_data:/tmp/mock-oauth2-server
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/default/.well-known/openid-configuration"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+    driver: local
+  oauth_data:
     driver: local

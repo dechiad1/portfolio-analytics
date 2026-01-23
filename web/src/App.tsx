@@ -4,7 +4,6 @@ import { Layout } from './shared/components/Layout';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
 import { PortfolioListPage } from './pages/portfolios/PortfolioListPage';
 import { PortfolioDetailPage } from './pages/portfolios/PortfolioDetailPage';
 import { SecuritiesPage } from './pages/securities/SecuritiesPage';
@@ -19,7 +18,6 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
 
           {/* Protected routes with layout */}
           <Route

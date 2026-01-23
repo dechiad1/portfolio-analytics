@@ -136,6 +136,7 @@ export async function apiRequest<T>(
   const config: RequestInit = {
     method,
     headers,
+    credentials: 'include',
   };
 
   // Add body for non-GET requests
