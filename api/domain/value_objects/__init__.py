@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -103,7 +102,7 @@ class OAuthTokens:
 
     access_token: str
     id_token: str
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
     expires_in: int = 3600
 
 
@@ -114,7 +113,7 @@ class OAuthUserInfo:
     subject: str
     email: str
     email_verified: bool = False
-    name: Optional[str] = None
+    name: str | None = None
 
 
 __all__ = [

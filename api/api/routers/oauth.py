@@ -1,9 +1,12 @@
-from typing import Annotated, Optional
+import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Cookie, Request, Response
 from fastapi.responses import RedirectResponse
 
 from domain.services.oauth_service import OAuthService, AuthenticationError
+
+logger = logging.getLogger(__name__)
 from domain.models.user import User
 from api.schemas.auth import UserResponse
 from api.mappers.auth_mapper import AuthMapper
@@ -59,8 +62,8 @@ def oauth_callback(
     code: str,
     state: str,
     oauth_service: Annotated[OAuthService, Depends(get_oauth_service)],
-    oauth_state: Annotated[Optional[str], Cookie()] = None,
-    oauth_nonce: Annotated[Optional[str], Cookie()] = None,
+    oauth_state: Annotated[str | None, Cookie()] = None,
+    oauth_nonce: Annotated[str | None, Cookie()] = None,
 ) -> RedirectResponse:
     """Handle OAuth callback from provider."""
     if oauth_state is None or oauth_state != state:
@@ -85,14 +88,15 @@ def oauth_callback(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
         )
-    except Exception:
+    except Exception as e:
+        logger.exception("OAuth callback failed: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication failed",
         )
 
     config = load_config()
-    frontend_url = config.server.cors_origins[0]
+    frontend_url = config.server.frontend_url
     is_secure = frontend_url.startswith("https")
 
     response = RedirectResponse(

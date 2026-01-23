@@ -135,14 +135,18 @@ class PostgresUserRepository(UserRepository):
             )
 
     def _row_to_user(self, row: tuple) -> User:
-        """Convert a database row to a User model."""
+        """Convert a database row to a User model.
+
+        Expects row with columns: id, email, password_hash, created_at, is_admin,
+        last_login, oauth_provider, oauth_subject
+        """
         return User(
             id=row[0],
             email=row[1],
             password_hash=row[2],
             created_at=row[3],
-            is_admin=row[4] if len(row) > 4 else False,
-            last_login=row[5] if len(row) > 5 else None,
-            oauth_provider=row[6] if len(row) > 6 else None,
-            oauth_subject=row[7] if len(row) > 7 else None,
+            is_admin=row[4],
+            last_login=row[5],
+            oauth_provider=row[6],
+            oauth_subject=row[7],
         )
