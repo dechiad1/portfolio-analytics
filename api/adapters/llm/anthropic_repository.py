@@ -9,6 +9,7 @@ from domain.ports.llm_repository import (
     RiskAnalysis,
     PortfolioInterpretation,
     AllocationInterpretation,
+    SecuritySummary,
 )
 
 
@@ -198,7 +199,7 @@ Provide a concise 3-4 paragraph summary of the current macro environment and its
     def interpret_portfolio_description(
         self,
         description: str,
-        available_securities: list[dict],
+        available_securities: list[SecuritySummary],
     ) -> PortfolioInterpretation:
         """Interpret a natural language portfolio description into allocations."""
 
@@ -291,16 +292,17 @@ Important:
             model_used=self._model,
         )
 
-    def _format_available_securities(self, securities: list[dict]) -> str:
+    def _format_available_securities(self, securities: list[SecuritySummary]) -> str:
         """Format available securities for the LLM prompt."""
         if not securities:
             return "No securities available."
 
         lines = []
         for s in securities:
+            sector = s.sector if s.sector else "N/A"
             line = (
-                f"- {s.get('ticker', 'N/A')}: {s.get('display_name', 'Unknown')} | "
-                f"Type: {s.get('asset_type', 'N/A')} | Sector: {s.get('sector', 'N/A')}"
+                f"- {s.ticker}: {s.display_name} | "
+                f"Type: {s.asset_type} | Sector: {sector}"
             )
             lines.append(line)
         return "\n".join(lines)

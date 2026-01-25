@@ -122,6 +122,8 @@ _simulation_service = None
 _simulation_repository = None
 _portfolio_builder_service = None
 _create_portfolio_command = None
+_unit_of_work = None
+_portfolio_builder_repository = None
 
 
 def get_postgres_pool():
@@ -373,6 +375,28 @@ def get_simulation_repository():
     return _simulation_repository
 
 
+def get_unit_of_work():
+    """Get or create UnitOfWork instance."""
+    global _unit_of_work
+    if _unit_of_work is None:
+        from adapters.postgres.unit_of_work import PostgresUnitOfWork
+
+        _unit_of_work = PostgresUnitOfWork(get_postgres_pool())
+    return _unit_of_work
+
+
+def get_portfolio_builder_repository():
+    """Get or create PortfolioBuilderRepository instance."""
+    global _portfolio_builder_repository
+    if _portfolio_builder_repository is None:
+        from adapters.postgres.portfolio_builder_repository import (
+            PostgresPortfolioBuilderRepository,
+        )
+
+        _portfolio_builder_repository = PostgresPortfolioBuilderRepository()
+    return _portfolio_builder_repository
+
+
 def get_portfolio_builder_service():
     """Get or create PortfolioBuilderService instance."""
     global _portfolio_builder_service
@@ -395,7 +419,8 @@ def get_create_portfolio_command():
         )
 
         _create_portfolio_command = CreatePortfolioWithHoldingsCommand(
-            postgres_pool=get_postgres_pool(),
+            unit_of_work=get_unit_of_work(),
+            portfolio_builder_repository=get_portfolio_builder_repository(),
             analytics_repository=get_analytics_repository(),
         )
     return _create_portfolio_command
@@ -412,7 +437,7 @@ def reset_dependencies() -> None:
     global _ticker_validator, _ticker_repository, _ticker_service
     global _simulation_params_repository, _simulation_service
     global _simulation_repository, _portfolio_builder_service
-    global _create_portfolio_command
+    global _create_portfolio_command, _unit_of_work, _portfolio_builder_repository
 
     if _postgres_pool is not None:
         _postgres_pool.close()
@@ -438,3 +463,5 @@ def reset_dependencies() -> None:
     _simulation_repository = None
     _portfolio_builder_service = None
     _create_portfolio_command = None
+    _unit_of_work = None
+    _portfolio_builder_repository = None

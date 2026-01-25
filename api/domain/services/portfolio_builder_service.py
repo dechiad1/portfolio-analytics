@@ -5,7 +5,7 @@ from uuid import UUID
 
 from domain.models.security import Security
 from domain.ports.ticker_repository import TickerRepository
-from domain.ports.llm_repository import LLMRepository
+from domain.ports.llm_repository import LLMRepository, SecuritySummary
 
 
 @dataclass
@@ -167,21 +167,21 @@ class PortfolioBuilderService:
                 unmatched_descriptions=["No securities available in registry"],
             )
 
-        # Convert securities to dict format for LLM
-        securities_dict = [
-            {
-                "ticker": s.ticker,
-                "display_name": s.display_name,
-                "asset_type": s.asset_type,
-                "sector": s.sector,
-            }
+        # Convert securities to SecuritySummary for LLM
+        security_summaries = [
+            SecuritySummary(
+                ticker=s.ticker,
+                display_name=s.display_name,
+                asset_type=s.asset_type,
+                sector=s.sector,
+            )
             for s in securities
         ]
 
         # Get interpretation from LLM
         interpretation = self._llm_repository.interpret_portfolio_description(
             description=description,
-            available_securities=securities_dict,
+            available_securities=security_summaries,
         )
 
         # Build a lookup map for securities

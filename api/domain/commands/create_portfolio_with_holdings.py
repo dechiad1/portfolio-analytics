@@ -1,13 +1,17 @@
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from domain.models.holding import Holding
 from domain.models.portfolio import Portfolio
 from domain.ports.analytics_repository import AnalyticsRepository
+from domain.ports.portfolio_builder_repository import (
+    PortfolioBuilderRepository,
+    PositionInput,
+    SecurityInput,
+)
+from domain.ports.unit_of_work import TransactionContext, UnitOfWork
 from domain.services.portfolio_builder_service import PortfolioAllocation, AllocationItem
-from adapters.postgres.connection import PostgresConnectionPool
 
 
 @dataclass
@@ -96,10 +100,12 @@ class CreatePortfolioWithHoldingsCommand:
 
     def __init__(
         self,
-        postgres_pool: PostgresConnectionPool,
+        unit_of_work: UnitOfWork,
+        portfolio_builder_repository: PortfolioBuilderRepository,
         analytics_repository: AnalyticsRepository,
     ) -> None:
-        self._pool = postgres_pool
+        self._unit_of_work = unit_of_work
+        self._portfolio_builder_repository = portfolio_builder_repository
         self._analytics_repository = analytics_repository
 
     def execute(
@@ -121,9 +127,7 @@ class CreatePortfolioWithHoldingsCommand:
         Returns:
             CreatePortfolioResult with the created portfolio and statistics
         """
-        now = datetime.now(timezone.utc)
         portfolio_id = uuid4()
-
         holdings_created = 0
         unmatched_descriptions: list[str] = []
 
@@ -141,27 +145,22 @@ class CreatePortfolioWithHoldingsCommand:
                         f"Price not available for {item.ticker}, using default"
                     )
 
-        with self._pool.transaction() as cur:
+        with self._unit_of_work.transaction() as ctx:
             # Create the portfolio
-            cur.execute(
-                """
-                INSERT INTO portfolio (portfolio_id, user_id, name, base_currency, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING portfolio_id, user_id, name, base_currency, created_at, updated_at
-                """,
-                (portfolio_id, user_id, name, base_currency, now, now),
+            portfolio_row = self._portfolio_builder_repository.create_portfolio_in_transaction(
+                ctx=ctx,
+                portfolio_id=portfolio_id,
+                user_id=user_id,
+                name=name,
+                base_currency=base_currency,
             )
-            portfolio_row = cur.fetchone()
-
-            if portfolio_row is None:
-                raise RuntimeError("Failed to create portfolio")
 
             # Create holdings if allocation is provided
             if allocation and allocation.allocations:
                 for item in allocation.allocations:
                     try:
                         self._create_holding_in_transaction(
-                            cur=cur,
+                            ctx=ctx,
                             portfolio_id=portfolio_id,
                             item=item,
                             price=price_map.get(item.ticker, Decimal("100")),
@@ -191,55 +190,30 @@ class CreatePortfolioWithHoldingsCommand:
 
     def _create_holding_in_transaction(
         self,
-        cur,
+        ctx: TransactionContext,
         portfolio_id: UUID,
         item: AllocationItem,
         price: Decimal,
     ) -> None:
         """Create a single holding within an existing transaction."""
         # Check if security already exists
-        cur.execute(
-            """
-            SELECT sr.security_id
-            FROM security_registry sr
-            JOIN equity_details ed ON sr.security_id = ed.security_id
-            WHERE ed.ticker = %s
-            """,
-            (item.ticker,),
+        security_id = self._portfolio_builder_repository.find_security_by_ticker(
+            ctx=ctx,
+            ticker=item.ticker,
         )
-        row = cur.fetchone()
 
-        if row:
-            security_id = row[0]
-        else:
+        if security_id is None:
             # Create new security
             security_id = uuid4()
-            asset_type = item.asset_type.upper()
-            if asset_type not in ("EQUITY", "ETF", "BOND", "CASH"):
-                asset_type = "EQUITY"
-
-            cur.execute(
-                """
-                INSERT INTO security_registry (security_id, asset_type, currency, display_name, is_active)
-                VALUES (%s, %s::asset_type, 'USD', %s, true)
-                """,
-                (security_id, asset_type, item.display_name),
-            )
-
-            cur.execute(
-                """
-                INSERT INTO equity_details (security_id, ticker, sector)
-                VALUES (%s, %s, %s)
-                """,
-                (security_id, item.ticker, item.sector),
-            )
-
-            cur.execute(
-                """
-                INSERT INTO security_identifier (security_id, id_type, id_value, is_primary)
-                VALUES (%s, 'TICKER'::identifier_type, %s, true)
-                """,
-                (security_id, item.ticker),
+            self._portfolio_builder_repository.create_security_in_transaction(
+                ctx=ctx,
+                security_id=security_id,
+                security=SecurityInput(
+                    ticker=item.ticker,
+                    display_name=item.display_name,
+                    asset_type=item.asset_type,
+                    sector=item.sector,
+                ),
             )
 
         # Calculate quantity from value and price
@@ -249,22 +223,16 @@ class CreatePortfolioWithHoldingsCommand:
         asset_class = map_sector_to_asset_class(item.sector, item.asset_type)
 
         # Create position
-        cur.execute(
-            """
-            INSERT INTO position_current (
-                portfolio_id, security_id, quantity, avg_cost,
-                broker, purchase_date, current_price, asset_class
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                portfolio_id,
-                security_id,
-                quantity,
-                price,  # purchase_price = current price at creation
-                "Generated",
-                date.today(),
-                price,
-                asset_class,
+        self._portfolio_builder_repository.create_position_in_transaction(
+            ctx=ctx,
+            position=PositionInput(
+                portfolio_id=portfolio_id,
+                security_id=security_id,
+                quantity=quantity,
+                avg_cost=price,
+                broker="Generated",
+                purchase_date=date.today(),
+                current_price=price,
+                asset_class=asset_class,
             ),
         )

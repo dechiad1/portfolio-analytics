@@ -83,6 +83,9 @@ export function useSpeechRecognition({
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -127,17 +130,31 @@ export function useSpeechRecognition({
 
     recognition.onend = () => {
       setIsListening(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
 
     recognition.onstart = () => {
       setIsListening(true);
       setError(null);
+      // Set a 3-minute timeout to prevent indefinite listening
+      timeoutRef.current = setTimeout(() => {
+        recognition.stop();
+        setError('Speech recognition timed out after 3 minutes. Please try again.');
+        onError?.('Speech recognition timed out after 3 minutes. Please try again.');
+      }, TIMEOUT_MS);
     };
 
     recognitionRef.current = recognition;
 
     return () => {
       recognition.abort();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
   }, [continuous, interimResults, lang, onResult, onError, isSupported]);
 
@@ -164,6 +181,10 @@ export function useSpeechRecognition({
   }, [isSupported]);
 
   const stopListening = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     recognitionRef.current?.stop();
   }, []);
 

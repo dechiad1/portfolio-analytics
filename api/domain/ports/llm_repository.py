@@ -31,6 +31,16 @@ class PortfolioInterpretation:
     model_used: str
 
 
+@dataclass
+class SecuritySummary:
+    """Summary of a security for LLM context."""
+
+    ticker: str
+    display_name: str
+    asset_type: str
+    sector: str | None
+
+
 class LLMRepository(ABC):
     """Port for LLM-based analysis operations."""
 
@@ -47,14 +57,14 @@ class LLMRepository(ABC):
     def interpret_portfolio_description(
         self,
         description: str,
-        available_securities: list[dict],
+        available_securities: list[SecuritySummary],
     ) -> PortfolioInterpretation:
         """
         Interpret a natural language portfolio description into allocations.
 
         Args:
             description: User's description of their portfolio
-            available_securities: List of available securities with ticker, display_name, asset_type, sector
+            available_securities: List of available securities
 
         Returns:
             PortfolioInterpretation with matched allocations and any unmatched descriptions
