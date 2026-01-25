@@ -120,6 +120,7 @@ _ticker_service = None
 _simulation_params_repository = None
 _simulation_service = None
 _simulation_repository = None
+_portfolio_builder_service = None
 
 
 def get_postgres_pool():
@@ -257,12 +258,15 @@ def get_portfolio_service():
 
 
 def get_llm_repository():
-    """Get or create LLMRepository instance."""
+    """Get or create LLMRepository instance. Returns None if API key not configured."""
     global _llm_repository
     if _llm_repository is None:
+        config = load_config()
+        if not config.llm.anthropic_api_key:
+            return None
+
         from adapters.llm.anthropic_repository import AnthropicLLMRepository
 
-        config = load_config()
         _llm_repository = AnthropicLLMRepository(
             api_key=config.llm.anthropic_api_key,
             model=config.llm.model,
@@ -368,6 +372,19 @@ def get_simulation_repository():
     return _simulation_repository
 
 
+def get_portfolio_builder_service():
+    """Get or create PortfolioBuilderService instance."""
+    global _portfolio_builder_service
+    if _portfolio_builder_service is None:
+        from domain.services.portfolio_builder_service import PortfolioBuilderService
+
+        _portfolio_builder_service = PortfolioBuilderService(
+            ticker_repository=get_ticker_repository(),
+            llm_repository=get_llm_repository(),
+        )
+    return _portfolio_builder_service
+
+
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
     global _postgres_pool, _holding_repository
@@ -378,7 +395,7 @@ def reset_dependencies() -> None:
     global _compute_analytics_command
     global _ticker_validator, _ticker_repository, _ticker_service
     global _simulation_params_repository, _simulation_service
-    global _simulation_repository
+    global _simulation_repository, _portfolio_builder_service
 
     if _postgres_pool is not None:
         _postgres_pool.close()
@@ -402,3 +419,4 @@ def reset_dependencies() -> None:
     _simulation_params_repository = None
     _simulation_service = None
     _simulation_repository = None
+    _portfolio_builder_service = None

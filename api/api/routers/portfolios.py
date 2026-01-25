@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
@@ -15,8 +16,10 @@ from domain.services.holding_service import (
     HoldingNotFoundError,
     HoldingValidationError,
 )
+from domain.services.portfolio_builder_service import PortfolioBuilderService
 from api.schemas.portfolio import (
     CreatePortfolioRequest,
+    CreatePortfolioResponse,
     UpdatePortfolioRequest,
     PortfolioResponse,
     PortfolioListResponse,
@@ -35,7 +38,12 @@ from api.mappers.portfolio_mapper import PortfolioMapper
 from api.mappers.holding_mapper import HoldingMapper
 from api.routers.auth import get_current_user_id, get_current_user_full
 from domain.services.risk_analysis_service import RiskAnalysisService
-from dependencies import get_portfolio_service, get_holding_service, get_risk_analysis_service
+from dependencies import (
+    get_portfolio_service,
+    get_holding_service,
+    get_risk_analysis_service,
+    get_portfolio_builder_service,
+)
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
@@ -76,7 +84,7 @@ def list_all_portfolios(
 
 @router.post(
     "",
-    response_model=PortfolioResponse,
+    response_model=CreatePortfolioResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a portfolio",
 )
@@ -84,14 +92,121 @@ def create_portfolio(
     request: CreatePortfolioRequest,
     user_id: Annotated[UUID, Depends(get_current_user_id)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-) -> PortfolioResponse:
-    """Create a new portfolio."""
+    holding_service: Annotated[HoldingService, Depends(get_holding_service)],
+    builder_service: Annotated[PortfolioBuilderService, Depends(get_portfolio_builder_service)],
+) -> CreatePortfolioResponse:
+    """Create a new portfolio.
+
+    Supports three creation modes:
+    - empty: Creates an empty portfolio (default)
+    - random: Creates a portfolio with random securities allocation
+    - dictation: Creates a portfolio based on natural language description
+    """
+    # Create the base portfolio
     portfolio = portfolio_service.create_portfolio(
         user_id=user_id,
         name=request.name,
         base_currency=request.base_currency,
     )
-    return PortfolioMapper.to_response(portfolio)
+
+    holdings_created = 0
+    unmatched_descriptions: list[str] = []
+
+    if request.creation_mode == "random":
+        # Generate random allocation
+        total_value = request.total_value or Decimal("100000")
+        allocation = builder_service.generate_random_allocation(total_value)
+
+        # Create holdings from allocation
+        for item in allocation.allocations:
+            try:
+                holding_service.create_holding(
+                    portfolio_id=portfolio.id,
+                    ticker=item.ticker,
+                    name=item.display_name,
+                    asset_type=item.asset_type.lower(),
+                    asset_class=_map_sector_to_asset_class(item.sector),
+                    sector=item.sector or "Broad Market",
+                    broker="Generated",
+                    quantity=_calculate_quantity(item.value, Decimal("100")),
+                    purchase_price=Decimal("100"),
+                    current_price=Decimal("100"),
+                    purchase_date=date.today(),
+                )
+                holdings_created += 1
+            except HoldingValidationError:
+                unmatched_descriptions.append(f"Failed to add {item.ticker}")
+
+        unmatched_descriptions.extend(allocation.unmatched_descriptions)
+
+    elif request.creation_mode == "dictation":
+        if not request.description:
+            unmatched_descriptions.append("Description is required for dictation mode")
+        else:
+            # Build allocation from description using LLM
+            total_value = request.total_value or Decimal("100000")
+            allocation = builder_service.build_from_description(
+                description=request.description,
+                total_value=total_value,
+            )
+
+            # Create holdings from allocation
+            for item in allocation.allocations:
+                try:
+                    holding_service.create_holding(
+                        portfolio_id=portfolio.id,
+                        ticker=item.ticker,
+                        name=item.display_name,
+                        asset_type=item.asset_type.lower(),
+                        asset_class=_map_sector_to_asset_class(item.sector),
+                        sector=item.sector or "Broad Market",
+                        broker="Generated",
+                        quantity=_calculate_quantity(item.value, Decimal("100")),
+                        purchase_price=Decimal("100"),
+                        current_price=Decimal("100"),
+                        purchase_date=date.today(),
+                    )
+                    holdings_created += 1
+                except HoldingValidationError:
+                    unmatched_descriptions.append(f"Failed to add {item.ticker}")
+
+            unmatched_descriptions.extend(allocation.unmatched_descriptions)
+
+    return CreatePortfolioResponse(
+        id=portfolio.id,
+        user_id=portfolio.user_id,
+        name=portfolio.name,
+        base_currency=portfolio.base_currency,
+        created_at=portfolio.created_at,
+        updated_at=portfolio.updated_at,
+        holdings_created=holdings_created,
+        unmatched_descriptions=unmatched_descriptions,
+    )
+
+
+def _map_sector_to_asset_class(sector: str | None) -> str:
+    """Map sector to asset class for holdings."""
+    sector_mapping = {
+        "Technology": "U.S. Stocks",
+        "Healthcare": "U.S. Stocks",
+        "Financials": "U.S. Stocks",
+        "Consumer Discretionary": "U.S. Stocks",
+        "Consumer Staples": "U.S. Stocks",
+        "Energy": "U.S. Stocks",
+        "Materials": "U.S. Stocks",
+        "Industrials": "U.S. Stocks",
+        "Utilities": "U.S. Stocks",
+        "Real Estate": "U.S. Stocks",
+        "Communication Services": "U.S. Stocks",
+    }
+    return sector_mapping.get(sector or "", "U.S. Stocks")
+
+
+def _calculate_quantity(value: Decimal, price: Decimal) -> Decimal:
+    """Calculate quantity from value and price."""
+    if price == 0:
+        return Decimal("0")
+    return (value / price).quantize(Decimal("0.0001"))
 
 
 @router.get(

@@ -1,14 +1,17 @@
 import { useState, useCallback, useEffect, type FormEvent } from 'react';
-import type { PortfolioInput } from '../../../shared/types';
+import type { PortfolioInput, CreationMode, CreatePortfolioResult } from '../../../shared/types';
+import { CreationModeSelector } from './CreationModeSelector';
+import { DictationInput } from './DictationInput';
 import styles from './CreatePortfolioModal.module.css';
 
 interface CreatePortfolioModalProps {
-  onSubmit: (input: PortfolioInput) => Promise<boolean>;
+  onSubmit: (input: PortfolioInput) => Promise<CreatePortfolioResult | null>;
   onClose: () => void;
   isSubmitting: boolean;
 }
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF'] as const;
+const DEFAULT_TOTAL_VALUE = 100000;
 
 /**
  * CreatePortfolioModal provides a form to create a new portfolio.
@@ -20,6 +23,11 @@ export function CreatePortfolioModal({
 }: CreatePortfolioModalProps) {
   const [name, setName] = useState('');
   const [baseCurrency, setBaseCurrency] = useState('USD');
+  const [creationMode, setCreationMode] = useState<CreationMode>('empty');
+  const [totalValue, setTotalValue] = useState(DEFAULT_TOTAL_VALUE);
+  const [description, setDescription] = useState('');
+  const [result, setResult] = useState<CreatePortfolioResult | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -35,15 +43,36 @@ export function CreatePortfolioModal({
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      const success = await onSubmit({
+      const input: PortfolioInput = {
         name: name.trim(),
         base_currency: baseCurrency,
-      });
-      if (success) {
-        onClose();
+        creation_mode: creationMode,
+      };
+
+      if (creationMode === 'random' || creationMode === 'dictation') {
+        input.total_value = totalValue;
+      }
+
+      if (creationMode === 'dictation') {
+        input.description = description.trim();
+      }
+
+      const portfolioResult = await onSubmit(input);
+
+      if (portfolioResult) {
+        setResult(portfolioResult);
+        if (portfolioResult.unmatched_descriptions.length > 0) {
+          setShowTooltip(true);
+          // Auto-close after showing the tooltip
+          setTimeout(() => {
+            onClose();
+          }, 3000);
+        } else {
+          onClose();
+        }
       }
     },
-    [name, baseCurrency, onSubmit, onClose]
+    [name, baseCurrency, creationMode, totalValue, description, onSubmit, onClose]
   );
 
   const handleBackdropClick = useCallback(
@@ -54,6 +83,12 @@ export function CreatePortfolioModal({
     },
     [onClose, isSubmitting]
   );
+
+  const isFormValid = () => {
+    if (!name.trim()) return false;
+    if (creationMode === 'dictation' && !description.trim()) return false;
+    return true;
+  };
 
   return (
     <div className={styles.overlay} onClick={handleBackdropClick} role="dialog" aria-modal="true">
@@ -121,6 +156,52 @@ export function CreatePortfolioModal({
             </select>
           </div>
 
+          <CreationModeSelector
+            value={creationMode}
+            onChange={setCreationMode}
+            disabled={isSubmitting}
+          />
+
+          {(creationMode === 'random' || creationMode === 'dictation') && (
+            <div className={styles.field}>
+              <label htmlFor="totalValue" className={styles.label}>
+                Total Portfolio Value ({baseCurrency})
+              </label>
+              <input
+                id="totalValue"
+                type="number"
+                className={styles.input}
+                value={totalValue}
+                onChange={(e) => setTotalValue(Number(e.target.value))}
+                min={1000}
+                step={1000}
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
+
+          {creationMode === 'dictation' && (
+            <DictationInput
+              value={description}
+              onChange={setDescription}
+              disabled={isSubmitting}
+            />
+          )}
+
+          {showTooltip && result && result.unmatched_descriptions.length > 0 && (
+            <div className={styles.tooltip}>
+              <p className={styles.tooltipTitle}>
+                Portfolio created with {result.holdings_created} holdings
+              </p>
+              <p className={styles.tooltipNote}>Some items could not be matched:</p>
+              <ul className={styles.tooltipList}>
+                {result.unmatched_descriptions.map((desc, i) => (
+                  <li key={i}>{desc}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className={styles.actions}>
             <button
               type="button"
@@ -133,7 +214,7 @@ export function CreatePortfolioModal({
             <button
               type="submit"
               className={styles.submitButton}
-              disabled={isSubmitting || !name.trim()}
+              disabled={isSubmitting || !isFormValid()}
             >
               {isSubmitting ? 'Creating...' : 'Create Portfolio'}
             </button>

@@ -184,3 +184,35 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.tooltip {
+  padding: 0.875rem;
+  margin-top: 0.75rem;
+  background-color: var(--color-warning-bg, #fef3c7);
+  border: 1px solid var(--color-warning-border, #f59e0b);
+  border-radius: 0.375rem;
+}
+
+.tooltipTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tooltipNote {
+  margin: 0 0 0.375rem 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.tooltipList {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.tooltipList li {
+  margin-bottom: 0.125rem;
+}

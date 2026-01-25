@@ -126,29 +126,143 @@
   padding: 1.5rem;
 }
 
-.resultContent {
-  margin-bottom: 1rem;
+.macroSummary {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--color-bg-secondary);
+  border-radius: 0.375rem;
 }
 
-.paragraph {
-  margin: 0 0 1rem;
+.macroTitle {
+  margin: 0 0 0.5rem;
   font-size: 0.875rem;
+  font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.macroText {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
   line-height: 1.6;
 }
 
-.paragraph:last-child {
-  margin-bottom: 0;
+.risksGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.paragraph:empty {
-  display: none;
+.riskCard {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background-color: var(--color-bg-secondary);
+}
+
+.riskHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.riskTitle {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.riskBadges {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.badge {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.badgeCategory {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.badgeSeverity {
+  color: white;
+}
+
+.severityHigh {
+  background-color: #dc2626;
+}
+
+.severityMedium {
+  background-color: #f59e0b;
+}
+
+.severityLow {
+  background-color: #10b981;
+}
+
+.riskDescription {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.riskDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.riskDetail {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.riskDetailLabel {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.riskDetailValue {
+  color: var(--color-text-primary);
+}
+
+.affectedHoldings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.holdingTag {
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  background-color: var(--color-bg-tertiary);
+  border-radius: 0.25rem;
+  color: var(--color-text-secondary);
 }
 
 .timestamp {
-  margin: 0;
+  margin: 1.5rem 0 0;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+.modelInfo {
+  margin-top: 0.25rem;
   font-size: 0.75rem;
   color: var(--color-text-tertiary);
 }

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass
@@ -9,6 +10,24 @@ class RiskAnalysis:
     risks: list[dict]
     macro_climate_summary: str
     analysis_timestamp: str
+    model_used: str
+
+
+@dataclass
+class AllocationInterpretation:
+    """Represents the result of portfolio description interpretation."""
+
+    ticker: str
+    display_name: str
+    weight: Decimal  # Percentage (0-100)
+
+
+@dataclass
+class PortfolioInterpretation:
+    """Represents the interpreted portfolio from user description."""
+
+    allocations: list[AllocationInterpretation]
+    unmatched_descriptions: list[str]
     model_used: str
 
 
@@ -22,4 +41,22 @@ class LLMRepository(ABC):
         holdings: list[dict],
     ) -> RiskAnalysis:
         """Analyze portfolio risks using LLM with web search for macro context."""
+        pass
+
+    @abstractmethod
+    def interpret_portfolio_description(
+        self,
+        description: str,
+        available_securities: list[dict],
+    ) -> PortfolioInterpretation:
+        """
+        Interpret a natural language portfolio description into allocations.
+
+        Args:
+            description: User's description of their portfolio
+            available_securities: List of available securities with ticker, display_name, asset_type, sector
+
+        Returns:
+            PortfolioInterpretation with matched allocations and any unmatched descriptions
+        """
         pass

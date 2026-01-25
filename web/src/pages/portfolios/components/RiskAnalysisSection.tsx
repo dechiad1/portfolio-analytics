@@ -1,4 +1,4 @@
-import type { RiskAnalysisResult } from '../../../shared/types';
+import type { RiskAnalysisResult, RiskItem } from '../../../shared/types';
 import styles from './RiskAnalysisSection.module.css';
 
 interface RiskAnalysisSectionProps {
@@ -6,6 +6,58 @@ interface RiskAnalysisSectionProps {
   isGenerating: boolean;
   onGenerate: () => Promise<boolean>;
   hasHoldings: boolean;
+}
+
+function getSeverityClass(severity: string): string {
+  switch (severity.toLowerCase()) {
+    case 'high':
+      return styles.severityHigh;
+    case 'medium':
+      return styles.severityMedium;
+    case 'low':
+      return styles.severityLow;
+    default:
+      return styles.severityMedium;
+  }
+}
+
+function RiskCard({ risk }: { risk: RiskItem }) {
+  return (
+    <div className={styles.riskCard}>
+      <div className={styles.riskHeader}>
+        <h4 className={styles.riskTitle}>{risk.title}</h4>
+        <div className={styles.riskBadges}>
+          <span className={`${styles.badge} ${styles.badgeCategory}`}>
+            {risk.category}
+          </span>
+          <span className={`${styles.badge} ${styles.badgeSeverity} ${getSeverityClass(risk.severity)}`}>
+            {risk.severity}
+          </span>
+        </div>
+      </div>
+      <p className={styles.riskDescription}>{risk.description}</p>
+      <div className={styles.riskDetails}>
+        {risk.affected_holdings.length > 0 && (
+          <div className={styles.riskDetail}>
+            <span className={styles.riskDetailLabel}>Affected:</span>
+            <div className={styles.affectedHoldings}>
+              {risk.affected_holdings.map((ticker) => (
+                <span key={ticker} className={styles.holdingTag}>{ticker}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className={styles.riskDetail}>
+          <span className={styles.riskDetailLabel}>Impact:</span>
+          <span className={styles.riskDetailValue}>{risk.potential_impact}</span>
+        </div>
+        <div className={styles.riskDetail}>
+          <span className={styles.riskDetailLabel}>Mitigation:</span>
+          <span className={styles.riskDetailValue}>{risk.mitigation}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -123,16 +175,21 @@ export function RiskAnalysisSection({
 
       {riskAnalysis && !isGenerating && (
         <div className={styles.result}>
-          <div className={styles.resultContent}>
-            {riskAnalysis.analysis.split('\n').map((paragraph, index) => (
-              <p key={index} className={styles.paragraph}>
-                {paragraph}
-              </p>
+          {riskAnalysis.macro_climate_summary && (
+            <div className={styles.macroSummary}>
+              <h4 className={styles.macroTitle}>Macro Environment</h4>
+              <p className={styles.macroText}>{riskAnalysis.macro_climate_summary}</p>
+            </div>
+          )}
+          <div className={styles.risksGrid}>
+            {riskAnalysis.risks.map((risk, index) => (
+              <RiskCard key={index} risk={risk} />
             ))}
           </div>
           <p className={styles.timestamp}>
-            Generated on {new Date(riskAnalysis.generated_at).toLocaleString()}
+            Generated on {new Date(riskAnalysis.analysis_timestamp).toLocaleString()}
           </p>
+          <p className={styles.modelInfo}>Model: {riskAnalysis.model_used}</p>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
+from domain.models.security import Security
 from domain.value_objects import ValidatedTicker, UserAddedTicker
 
 
@@ -25,4 +26,9 @@ class TickerRepository(ABC):
     @abstractmethod
     def get_user_added_tickers(self) -> list[UserAddedTicker]:
         """Get all tickers added by users (source='user')."""
+        pass
+
+    @abstractmethod
+    def get_all_securities(self) -> list[Security]:
+        """Get all securities from the registry with their details."""
         pass

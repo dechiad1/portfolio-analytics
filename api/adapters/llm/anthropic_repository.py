@@ -1,9 +1,15 @@
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import anthropic
 
-from domain.ports.llm_repository import LLMRepository, RiskAnalysis
+from domain.ports.llm_repository import (
+    LLMRepository,
+    RiskAnalysis,
+    PortfolioInterpretation,
+    AllocationInterpretation,
+)
 
 
 class AnthropicLLMRepository(LLMRepository):
@@ -188,3 +194,113 @@ Provide a concise 3-4 paragraph summary of the current macro environment and its
             end = text.rfind("}") + 1
             return text[start:end]
         return text
+
+    def interpret_portfolio_description(
+        self,
+        description: str,
+        available_securities: list[dict],
+    ) -> PortfolioInterpretation:
+        """Interpret a natural language portfolio description into allocations."""
+
+        # Format available securities for the prompt
+        securities_text = self._format_available_securities(available_securities)
+
+        prompt = f"""You are a financial advisor helping to interpret a user's portfolio description and map it to specific securities.
+
+## User's Portfolio Description
+{description}
+
+## Available Securities in Our Registry
+{securities_text}
+
+## Your Task
+Based on the user's description, select the most appropriate securities from our registry and assign weights (percentages) that total 100%.
+
+Guidelines:
+1. Map general descriptions to specific tickers (e.g., "S&P 500 index fund" -> SPY or VOO, "tech stocks" -> QQQ or specific tech ETFs/stocks)
+2. If the user mentions a specific percentage, use it. Otherwise, infer reasonable weights.
+3. If the user's description doesn't add up to 100%, adjust proportionally or fill gaps with diversified options.
+4. If you cannot find a matching security, note it in the unmatched list.
+5. Prefer ETFs for broad market exposure and individual stocks for specific companies.
+
+Return your response as JSON with this structure:
+{{
+  "allocations": [
+    {{
+      "ticker": "string (exact ticker from available securities)",
+      "display_name": "string (name of the security)",
+      "weight": number (percentage, 0-100)
+    }}
+  ],
+  "unmatched_descriptions": ["string (parts of description that couldn't be matched)"]
+}}
+
+Important:
+- Weights MUST sum to exactly 100
+- Only use tickers from the available securities list
+- Be specific and practical in your allocations"""
+
+        try:
+            response = self._client.messages.create(
+                model=self._model,
+                max_tokens=2048,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+            )
+            response_text = response.content[0].text
+        except anthropic.AuthenticationError:
+            return PortfolioInterpretation(
+                allocations=[],
+                unmatched_descriptions=["LLM authentication failed - check API key"],
+                model_used=self._model,
+            )
+        except anthropic.APIError as e:
+            return PortfolioInterpretation(
+                allocations=[],
+                unmatched_descriptions=[f"LLM API error: {str(e)}"],
+                model_used=self._model,
+            )
+        json_str = self._extract_json(response_text)
+
+        try:
+            result = json.loads(json_str)
+        except json.JSONDecodeError:
+            return PortfolioInterpretation(
+                allocations=[],
+                unmatched_descriptions=["Failed to parse LLM response"],
+                model_used=self._model,
+            )
+
+        allocations = []
+        for alloc in result.get("allocations", []):
+            try:
+                allocations.append(
+                    AllocationInterpretation(
+                        ticker=alloc.get("ticker", ""),
+                        display_name=alloc.get("display_name", ""),
+                        weight=Decimal(str(alloc.get("weight", 0))),
+                    )
+                )
+            except (ValueError, TypeError):
+                continue
+
+        return PortfolioInterpretation(
+            allocations=allocations,
+            unmatched_descriptions=result.get("unmatched_descriptions", []),
+            model_used=self._model,
+        )
+
+    def _format_available_securities(self, securities: list[dict]) -> str:
+        """Format available securities for the LLM prompt."""
+        if not securities:
+            return "No securities available."
+
+        lines = []
+        for s in securities:
+            line = (
+                f"- {s.get('ticker', 'N/A')}: {s.get('display_name', 'Unknown')} | "
+                f"Type: {s.get('asset_type', 'N/A')} | Sector: {s.get('sector', 'N/A')}"
+            )
+            lines.append(line)
+        return "\n".join(lines)
