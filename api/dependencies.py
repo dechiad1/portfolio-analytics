@@ -102,12 +102,10 @@ def load_config() -> AppConfig:
 
 # Singleton instances for repositories and services
 _postgres_pool = None
-_session_repository = None
 _holding_repository = None
 _user_repository = None
 _portfolio_repository = None
 _analytics_repository = None
-_session_service = None
 _holding_service = None
 _auth_service = None
 _oauth_provider = None
@@ -119,6 +117,9 @@ _compute_analytics_command = None
 _ticker_validator = None
 _ticker_repository = None
 _ticker_service = None
+_simulation_params_repository = None
+_simulation_service = None
+_simulation_repository = None
 
 
 def get_postgres_pool():
@@ -136,16 +137,6 @@ def get_postgres_pool():
             password=config.database.postgres.password,
         )
     return _postgres_pool
-
-
-def get_session_repository():
-    """Get or create SessionRepository instance."""
-    global _session_repository
-    if _session_repository is None:
-        from adapters.postgres.session_repository import PostgresSessionRepository
-
-        _session_repository = PostgresSessionRepository(get_postgres_pool())
-    return _session_repository
 
 
 def get_holding_repository():
@@ -188,16 +179,6 @@ def get_analytics_repository():
         db_path = Path(__file__).parent / config.database.duckdb.path
         _analytics_repository = DuckDBAnalyticsRepository(str(db_path))
     return _analytics_repository
-
-
-def get_session_service():
-    """Get or create SessionService instance for FastAPI dependency injection."""
-    global _session_service
-    if _session_service is None:
-        from domain.services.session_service import SessionService
-
-        _session_service = SessionService(get_session_repository())
-    return _session_service
 
 
 def get_holding_service():
@@ -349,26 +330,64 @@ def get_ticker_service():
     return _ticker_service
 
 
+def get_simulation_params_repository():
+    """Get or create SimulationParamsRepository instance."""
+    global _simulation_params_repository
+    if _simulation_params_repository is None:
+        from adapters.duckdb.simulation_params_repository import (
+            DuckDBSimulationParamsRepository,
+        )
+
+        config = load_config()
+        db_path = Path(__file__).parent / config.database.duckdb.path
+        _simulation_params_repository = DuckDBSimulationParamsRepository(str(db_path))
+    return _simulation_params_repository
+
+
+def get_simulation_service():
+    """Get or create SimulationService instance for FastAPI dependency injection."""
+    global _simulation_service
+    if _simulation_service is None:
+        from domain.services.simulation_service import SimulationService
+
+        _simulation_service = SimulationService(
+            portfolio_repository=get_portfolio_repository(),
+            holding_repository=get_holding_repository(),
+            simulation_params_repository=get_simulation_params_repository(),
+        )
+    return _simulation_service
+
+
+def get_simulation_repository():
+    """Get or create SimulationRepository instance."""
+    global _simulation_repository
+    if _simulation_repository is None:
+        from adapters.postgres.simulation_repository import PostgresSimulationRepository
+
+        _simulation_repository = PostgresSimulationRepository(get_postgres_pool())
+    return _simulation_repository
+
+
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
-    global _postgres_pool, _session_repository, _holding_repository
+    global _postgres_pool, _holding_repository
     global _user_repository, _portfolio_repository
-    global _analytics_repository, _session_service, _holding_service
+    global _analytics_repository, _holding_service
     global _auth_service, _oauth_provider, _oauth_service, _portfolio_service
     global _llm_repository, _risk_analysis_service
     global _compute_analytics_command
     global _ticker_validator, _ticker_repository, _ticker_service
+    global _simulation_params_repository, _simulation_service
+    global _simulation_repository
 
     if _postgres_pool is not None:
         _postgres_pool.close()
 
     _postgres_pool = None
-    _session_repository = None
     _holding_repository = None
     _user_repository = None
     _portfolio_repository = None
     _analytics_repository = None
-    _session_service = None
     _holding_service = None
     _auth_service = None
     _oauth_provider = None
@@ -380,3 +399,6 @@ def reset_dependencies() -> None:
     _ticker_validator = None
     _ticker_repository = None
     _ticker_service = None
+    _simulation_params_repository = None
+    _simulation_service = None
+    _simulation_repository = None

@@ -86,9 +86,25 @@ class MockOAuth2Provider(OAuthProvider):
         if token_nonce is not None and token_nonce != nonce:
             raise ValueError("Invalid nonce in ID token")
 
+        # mock-oauth2-server may not include email if not entered in the form
+        # Try multiple fields: email, preferred_username, or construct from sub
+        email = payload.get("email")
+        if not email:
+            email = payload.get("preferred_username")
+        if not email:
+            # Fallback: use subject as email if it looks like an email
+            sub = payload["sub"]
+            if "@" in sub:
+                email = sub
+            else:
+                raise ValueError(
+                    "No email found in ID token. Please enter an email address "
+                    "in the mock-oauth2-server login form."
+                )
+
         return OAuthUserInfo(
             subject=payload["sub"],
-            email=payload["email"],
+            email=email,
             email_verified=payload.get("email_verified", False),
             name=payload.get("name"),
         )

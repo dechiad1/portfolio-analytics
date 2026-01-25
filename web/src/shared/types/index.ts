@@ -1,41 +1,4 @@
 /**
- * Session represents a user session for the portfolio analytics application.
- * Sessions are used to group holdings together without requiring authentication.
- */
-export interface Session {
-  id: string;
-  created_at: string;
-  last_accessed_at: string;
-}
-
-/**
- * Holding represents a single investment holding in a portfolio.
- */
-export interface Holding {
-  id: string;
-  session_id: string;
-  ticker: string;
-  name: string;
-  asset_class: string;
-  sector: string;
-  broker: string;
-  purchase_date: string;
-  created_at: string;
-}
-
-/**
- * HoldingInput is the data required to create or update a holding.
- */
-export interface HoldingInput {
-  ticker: string;
-  name: string;
-  asset_class: string;
-  sector: string;
-  broker: string;
-  purchase_date: string;
-}
-
-/**
  * TickerAnalytics contains performance metrics for a single holding.
  */
 export interface TickerAnalytics {
@@ -130,30 +93,6 @@ export interface User {
   id: string;
   email: string;
   created_at: string;
-}
-
-/**
- * AuthTokens returned from login/register.
- */
-export interface AuthTokens {
-  access_token: string;
-  token_type: string;
-}
-
-/**
- * Login credentials.
- */
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-/**
- * Registration credentials.
- */
-export interface RegisterCredentials {
-  email: string;
-  password: string;
 }
 
 /**

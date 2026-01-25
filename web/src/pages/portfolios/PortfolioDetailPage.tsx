@@ -10,6 +10,7 @@ import { PortfolioHoldingsTable } from './components/PortfolioHoldingsTable';
 import { AddHoldingModal } from './components/AddHoldingModal';
 import { EditHoldingModal } from './components/EditHoldingModal';
 import { RiskAnalysisSection } from './components/RiskAnalysisSection';
+import { SimulationsSection } from './components/SimulationsSection';
 import styles from './PortfolioDetailPage.module.css';
 
 /**
@@ -175,6 +176,13 @@ export function PortfolioDetailPage() {
           riskAnalysis={riskAnalysis}
           isGenerating={isGeneratingRiskAnalysis}
           onGenerate={runRiskAnalysis}
+          hasHoldings={holdings.length > 0}
+        />
+      </section>
+
+      <section className={styles.section}>
+        <SimulationsSection
+          portfolioId={portfolioId!}
           hasHoldings={holdings.length > 0}
         />
       </section>

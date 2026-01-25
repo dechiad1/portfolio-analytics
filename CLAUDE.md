@@ -18,4 +18,3 @@ This project is a monorepo
 2. portfolio_analytics: dbt based datapipeline for fetching raw data & tranforming it to be used by the application
 3. web: React based client application
 4. docker: infrastructure & dependencies for running the full system locally
-
