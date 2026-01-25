@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { PortfolioWithUser, PortfolioInput } from '../../shared/types';
+import type { PortfolioWithUser, PortfolioInput, CreatePortfolioResult } from '../../shared/types';
 import { ApiClientError } from '../../shared/api/client';
 import { fetchAllPortfolios, createPortfolio, deletePortfolio } from './portfolioApi';
 
@@ -18,7 +18,7 @@ interface PortfolioListState {
   /** Refetch portfolios from the server */
   refetch: () => Promise<void>;
   /** Create a new portfolio */
-  addPortfolio: (input: PortfolioInput) => Promise<boolean>;
+  addPortfolio: (input: PortfolioInput) => Promise<CreatePortfolioResult | null>;
   /** Delete a portfolio */
   removePortfolio: (portfolioId: string) => Promise<boolean>;
   /** Clear current error */
@@ -58,19 +58,19 @@ export function usePortfolioListState(): PortfolioListState {
     await loadPortfolios();
   }, [loadPortfolios]);
 
-  const addPortfolio = useCallback(async (input: PortfolioInput): Promise<boolean> => {
+  const addPortfolio = useCallback(async (input: PortfolioInput): Promise<CreatePortfolioResult | null> => {
     setIsMutating(true);
     setError(null);
 
     try {
-      await createPortfolio(input);
+      const result = await createPortfolio(input);
       await loadPortfolios();
-      return true;
+      return result;
     } catch (err) {
       const message =
         err instanceof ApiClientError ? err.detail : 'Failed to create portfolio';
       setError(message);
-      return false;
+      return null;
     } finally {
       setIsMutating(false);
     }

@@ -7,6 +7,7 @@ import type {
   PortfolioHoldingInput,
   PortfolioSummary,
   RiskAnalysisResult,
+  CreatePortfolioResult,
 } from '../../shared/types';
 
 /**
@@ -28,8 +29,8 @@ export async function fetchAllPortfolios(): Promise<PortfolioWithUser[]> {
 /**
  * Create a new portfolio.
  */
-export async function createPortfolio(input: PortfolioInput): Promise<Portfolio> {
-  return api.post<Portfolio>('/portfolios', input);
+export async function createPortfolio(input: PortfolioInput): Promise<CreatePortfolioResult> {
+  return api.post<CreatePortfolioResult>('/portfolios', input);
 }
 
 /**

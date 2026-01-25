@@ -1,6 +1,7 @@
 from uuid import UUID, uuid4
 
 from adapters.postgres.connection import PostgresConnectionPool
+from domain.models.security import Security
 from domain.ports.ticker_repository import TickerRepository, UserAddedTicker
 from domain.ports.ticker_validator import ValidatedTicker
 
@@ -87,6 +88,42 @@ class PostgresTickerRepository(TickerRepository):
                 display_name=row[1],
                 asset_type=row[2],
                 added_at=row[3],
+            )
+            for row in rows
+        ]
+
+    def get_all_securities(self) -> list[Security]:
+        """Get all securities from the registry with their equity details."""
+        with self._pool.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    sr.security_id,
+                    ed.ticker,
+                    sr.display_name,
+                    sr.asset_type::text,
+                    sr.currency,
+                    ed.sector,
+                    ed.industry,
+                    ed.exchange
+                FROM security_registry sr
+                JOIN equity_details ed ON sr.security_id = ed.security_id
+                WHERE sr.is_active = true
+                ORDER BY ed.ticker
+                """
+            )
+            rows = cur.fetchall()
+
+        return [
+            Security(
+                security_id=row[0],
+                ticker=row[1],
+                display_name=row[2],
+                asset_type=row[3],
+                currency=row[4],
+                sector=row[5],
+                industry=row[6],
+                exchange=row[7],
             )
             for row in rows
         ]

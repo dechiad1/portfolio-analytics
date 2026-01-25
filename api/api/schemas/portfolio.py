@@ -1,7 +1,12 @@
 from datetime import datetime
+from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+
+CreationMode = Literal["empty", "random", "dictation"]
 
 
 class CreatePortfolioRequest(BaseModel):
@@ -9,6 +14,16 @@ class CreatePortfolioRequest(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     base_currency: str = Field(default="USD", min_length=3, max_length=3)
+    creation_mode: CreationMode = Field(default="empty")
+    total_value: Decimal | None = Field(
+        default=None,
+        ge=Decimal("1000"),
+        description="Total portfolio value for random/dictation mode (minimum 1000, default 100000)",
+    )
+    description: str | None = Field(
+        default=None,
+        description="Portfolio description for dictation mode",
+    )
 
 
 class UpdatePortfolioRequest(BaseModel):
@@ -27,6 +42,19 @@ class PortfolioResponse(BaseModel):
     base_currency: str
     created_at: datetime
     updated_at: datetime
+
+
+class CreatePortfolioResponse(BaseModel):
+    """Response schema for portfolio creation with builder modes."""
+
+    id: UUID
+    user_id: UUID
+    name: str
+    base_currency: str
+    created_at: datetime
+    updated_at: datetime
+    holdings_created: int = 0
+    unmatched_descriptions: list[str] = []
 
 
 class PortfolioListResponse(BaseModel):

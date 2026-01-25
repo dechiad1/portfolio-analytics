@@ -7,12 +7,43 @@ from api.schemas.ticker import (
     AddTickerResponse,
     UserAddedTickerResponse,
     UserAddedTickersListResponse,
+    SecurityResponse,
+    SecurityRegistryResponse,
 )
-from dependencies import get_ticker_service
+from dependencies import get_ticker_service, get_ticker_repository
 from domain.exceptions import TickerAlreadyTrackedException, InvalidTickerException
+from domain.ports.ticker_repository import TickerRepository
 from domain.services.ticker_service import TickerService
 
 router = APIRouter(prefix="/tickers", tags=["tickers"])
+
+
+@router.get("/all", response_model=SecurityRegistryResponse)
+def get_all_securities(
+    ticker_repository: Annotated[TickerRepository, Depends(get_ticker_repository)],
+) -> SecurityRegistryResponse:
+    """
+    Get all securities in the registry.
+
+    Returns all active securities with their details (ticker, name, asset type, sector, etc.).
+    """
+    securities = ticker_repository.get_all_securities()
+    return SecurityRegistryResponse(
+        securities=[
+            SecurityResponse(
+                security_id=s.security_id,
+                ticker=s.ticker,
+                display_name=s.display_name,
+                asset_type=s.asset_type,
+                currency=s.currency,
+                sector=s.sector,
+                industry=s.industry,
+                exchange=s.exchange,
+            )
+            for s in securities
+        ],
+        count=len(securities),
+    )
 
 
 @router.get("/user-added", response_model=UserAddedTickersListResponse)

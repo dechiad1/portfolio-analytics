@@ -121,11 +121,33 @@ export interface PortfolioWithUser {
 }
 
 /**
+ * Creation modes for portfolios.
+ */
+export type CreationMode = 'empty' | 'random' | 'dictation';
+
+/**
  * PortfolioInput is the data required to create or update a portfolio.
  */
 export interface PortfolioInput {
   name: string;
   base_currency?: string;
+  creation_mode?: CreationMode;
+  total_value?: number;
+  description?: string;
+}
+
+/**
+ * Extended portfolio response from creation with builder modes.
+ */
+export interface CreatePortfolioResult {
+  id: string;
+  user_id: string;
+  name: string;
+  base_currency: string;
+  created_at: string;
+  updated_at: string;
+  holdings_created: number;
+  unmatched_descriptions: string[];
 }
 
 /**
@@ -188,11 +210,26 @@ export interface PortfolioSummary {
 }
 
 /**
+ * Individual risk item from AI analysis.
+ */
+export interface RiskItem {
+  category: string;
+  severity: string;
+  title: string;
+  description: string;
+  affected_holdings: string[];
+  potential_impact: string;
+  mitigation: string;
+}
+
+/**
  * RiskAnalysisResult contains AI-generated risk analysis.
  */
 export interface RiskAnalysisResult {
-  analysis: string;
-  generated_at: string;
+  risks: RiskItem[];
+  macro_climate_summary: string;
+  analysis_timestamp: string;
+  model_used: string;
 }
 
 /**

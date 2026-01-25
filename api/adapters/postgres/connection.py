@@ -42,6 +42,18 @@ class PostgresConnectionPool:
                 yield cur
                 conn.commit()
 
+    @contextmanager
+    def transaction(self) -> Generator[psycopg.Cursor, None, None]:
+        """Get a cursor within a transaction. Commits on success, rolls back on exception."""
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                try:
+                    yield cur
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    raise
+
     def close(self) -> None:
         """Close the connection pool."""
         self._pool.close()

@@ -29,6 +29,7 @@ httpx = "^0.26.0"
 ruff = "^0.2.0"
 mypy = "^1.8.0"
 types-pyyaml = "^6.0"
+import-linter = "^2.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -51,3 +52,24 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 module = ["duckdb", "psycopg_pool", "yfinance", "simulation", "simulation.*"]
 ignore_missing_imports = true
+
+[tool.importlinter]
+root_packages = ["api", "domain", "adapters"]
+
+[[tool.importlinter.contracts]]
+name = "Domain cannot import adapters"
+type = "forbidden"
+source_modules = ["domain"]
+forbidden_modules = ["adapters"]
+
+[[tool.importlinter.contracts]]
+name = "Domain cannot import api"
+type = "forbidden"
+source_modules = ["domain"]
+forbidden_modules = ["api"]
+
+[[tool.importlinter.contracts]]
+name = "Adapters cannot import api"
+type = "forbidden"
+source_modules = ["adapters"]
+forbidden_modules = ["api"]

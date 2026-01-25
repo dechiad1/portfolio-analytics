@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -24,4 +25,24 @@ class UserAddedTickerResponse(BaseModel):
 
 class UserAddedTickersListResponse(BaseModel):
     tickers: list[UserAddedTickerResponse]
+    count: int
+
+
+class SecurityResponse(BaseModel):
+    """Response schema for a security in the registry."""
+
+    security_id: UUID
+    ticker: str
+    display_name: str
+    asset_type: str
+    currency: str
+    sector: str | None = None
+    industry: str | None = None
+    exchange: str | None = None
+
+
+class SecurityRegistryResponse(BaseModel):
+    """Response schema for the security registry."""
+
+    securities: list[SecurityResponse]
     count: int

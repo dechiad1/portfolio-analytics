@@ -15,8 +15,13 @@ from domain.services.holding_service import (
     HoldingNotFoundError,
     HoldingValidationError,
 )
+from domain.services.portfolio_builder_service import PortfolioBuilderService
+from domain.commands.create_portfolio_with_holdings import (
+    CreatePortfolioWithHoldingsCommand,
+)
 from api.schemas.portfolio import (
     CreatePortfolioRequest,
+    CreatePortfolioResponse,
     UpdatePortfolioRequest,
     PortfolioResponse,
     PortfolioListResponse,
@@ -35,7 +40,13 @@ from api.mappers.portfolio_mapper import PortfolioMapper
 from api.mappers.holding_mapper import HoldingMapper
 from api.routers.auth import get_current_user_id, get_current_user_full
 from domain.services.risk_analysis_service import RiskAnalysisService
-from dependencies import get_portfolio_service, get_holding_service, get_risk_analysis_service
+from dependencies import (
+    get_portfolio_service,
+    get_holding_service,
+    get_risk_analysis_service,
+    get_portfolio_builder_service,
+    get_create_portfolio_command,
+)
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
@@ -76,22 +87,60 @@ def list_all_portfolios(
 
 @router.post(
     "",
-    response_model=PortfolioResponse,
+    response_model=CreatePortfolioResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a portfolio",
 )
 def create_portfolio(
     request: CreatePortfolioRequest,
     user_id: Annotated[UUID, Depends(get_current_user_id)],
-    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-) -> PortfolioResponse:
-    """Create a new portfolio."""
-    portfolio = portfolio_service.create_portfolio(
+    builder_service: Annotated[PortfolioBuilderService, Depends(get_portfolio_builder_service)],
+    create_command: Annotated[
+        CreatePortfolioWithHoldingsCommand, Depends(get_create_portfolio_command)
+    ],
+) -> CreatePortfolioResponse:
+    """Create a new portfolio.
+
+    Supports three creation modes:
+    - empty: Creates an empty portfolio (default)
+    - random: Creates a portfolio with random securities allocation
+    - dictation: Creates a portfolio based on natural language description
+    """
+    allocation = None
+    total_value = request.total_value or Decimal("100000")
+
+    if request.creation_mode == "random":
+        allocation = builder_service.generate_random_allocation(total_value)
+
+    elif request.creation_mode == "dictation":
+        if not request.description:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Description is required for dictation mode",
+            )
+        allocation = builder_service.build_from_description(
+            description=request.description,
+            total_value=total_value,
+        )
+
+    # Create portfolio and holdings in a single transaction
+    result = create_command.execute(
         user_id=user_id,
         name=request.name,
         base_currency=request.base_currency,
+        allocation=allocation,
     )
-    return PortfolioMapper.to_response(portfolio)
+
+    return CreatePortfolioResponse(
+        id=result.portfolio.id,
+        user_id=result.portfolio.user_id,
+        name=result.portfolio.name,
+        base_currency=result.portfolio.base_currency,
+        created_at=result.portfolio.created_at,
+        updated_at=result.portfolio.updated_at,
+        holdings_created=result.holdings_created,
+        unmatched_descriptions=result.unmatched_descriptions,
+    )
 
 
 @router.get(
