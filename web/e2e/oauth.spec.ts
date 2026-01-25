@@ -40,7 +40,7 @@ test.describe('OAuth Authentication', () => {
     await page.click('input[type="submit"]');
 
     // Should redirect back to app
-    await page.waitForURL(/localhost:3001\/portfolios/, { timeout: 15000 });
+    await page.waitForURL(/\/portfolios/, { timeout: 15000 });
 
     // Verify authenticated state - should see portfolios page (h1 title)
     await expect(page.getByRole('heading', { name: 'Portfolios', level: 1 })).toBeVisible({ timeout: 10000 });
@@ -64,7 +64,7 @@ test.describe('OAuth Authentication', () => {
     await page.fill('input[name="username"]', testEmail);
     await page.fill('textarea[name="claims"]', JSON.stringify({ email: testEmail }));
     await page.click('input[type="submit"]');
-    await page.waitForURL(/localhost:3001\/portfolios/, { timeout: 15000 });
+    await page.waitForURL(/\/portfolios/, { timeout: 15000 });
 
     // Now logout - find and click logout button in the navigation
     const logoutButton = page.getByRole('button', { name: /logout/i });
@@ -85,7 +85,7 @@ test.describe('OAuth Authentication', () => {
     await page.fill('input[name="username"]', testEmail);
     await page.fill('textarea[name="claims"]', JSON.stringify({ email: testEmail }));
     await page.click('input[type="submit"]');
-    await page.waitForURL(/localhost:3001\/portfolios/, { timeout: 15000 });
+    await page.waitForURL(/\/portfolios/, { timeout: 15000 });
 
     // Verify authenticated (h1 title)
     await expect(page.getByRole('heading', { name: 'Portfolios', level: 1 })).toBeVisible({ timeout: 10000 });
@@ -108,7 +108,7 @@ test.describe('OAuth Authentication', () => {
     await page.fill('input[name="username"]', adminEmail);
     await page.fill('textarea[name="claims"]', JSON.stringify({ email: adminEmail }));
     await page.click('input[type="submit"]');
-    await page.waitForURL(/localhost:3001\/portfolios/, { timeout: 15000 });
+    await page.waitForURL(/\/portfolios/, { timeout: 15000 });
 
     // Verify authenticated (h1 title)
     await expect(page.getByRole('heading', { name: 'Portfolios', level: 1 })).toBeVisible({ timeout: 10000 });
