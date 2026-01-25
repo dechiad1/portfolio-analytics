@@ -13,7 +13,7 @@ async function oauthLogin(page: Page, email: string) {
   await page.fill('input[name="username"]', email);
   await page.fill('textarea[name="claims"]', JSON.stringify({ email }));
   await page.click('input[type="submit"]');
-  await page.waitForURL(/localhost:3000\/portfolios/, { timeout: 15000 });
+  await page.waitForURL(/localhost:3001\/portfolios/, { timeout: 15000 });
 }
 
 test.describe('Portfolio Management', () => {

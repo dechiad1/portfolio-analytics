@@ -60,7 +60,7 @@ class ServerConfig(BaseModel):
     host: str
     port: int
     cors_origins: list[str]
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "http://localhost:3001"
 
 
 class AppConfig(BaseModel):

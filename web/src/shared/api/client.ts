@@ -3,7 +3,7 @@ import type { ApiError } from '../types';
 /**
  * Base URL for API requests, configured via environment variable.
  */
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
 /**
  * Custom error class for API errors.

@@ -14,7 +14,7 @@ A modern data stack project for analyzing investment portfolio performance, risk
 1. `task docker:up` - Start PostgreSQL
 2. `task db:migrate` - Run database migrations
 3. `task db:seed` - Seed securities data
-4. `task run:api` - Start API server (port 8000)
+4. `task run:api` - Start API server (port 8001)
 5. `cd web && npm install && npm run dev` - Start frontend (port 5173)
 
 ### Full Data Setup (for analytics)
