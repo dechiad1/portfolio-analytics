@@ -17,7 +17,8 @@ class CreatePortfolioRequest(BaseModel):
     creation_mode: CreationMode = Field(default="empty")
     total_value: Decimal | None = Field(
         default=None,
-        description="Total portfolio value for random mode (default 100000)",
+        ge=Decimal("1000"),
+        description="Total portfolio value for random/dictation mode (minimum 1000, default 100000)",
     )
     description: str | None = Field(
         default=None,

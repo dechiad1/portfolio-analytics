@@ -121,6 +121,7 @@ _simulation_params_repository = None
 _simulation_service = None
 _simulation_repository = None
 _portfolio_builder_service = None
+_create_portfolio_command = None
 
 
 def get_postgres_pool():
@@ -385,6 +386,21 @@ def get_portfolio_builder_service():
     return _portfolio_builder_service
 
 
+def get_create_portfolio_command():
+    """Get or create CreatePortfolioWithHoldingsCommand instance."""
+    global _create_portfolio_command
+    if _create_portfolio_command is None:
+        from domain.commands.create_portfolio_with_holdings import (
+            CreatePortfolioWithHoldingsCommand,
+        )
+
+        _create_portfolio_command = CreatePortfolioWithHoldingsCommand(
+            postgres_pool=get_postgres_pool(),
+            analytics_repository=get_analytics_repository(),
+        )
+    return _create_portfolio_command
+
+
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
     global _postgres_pool, _holding_repository
@@ -396,6 +412,7 @@ def reset_dependencies() -> None:
     global _ticker_validator, _ticker_repository, _ticker_service
     global _simulation_params_repository, _simulation_service
     global _simulation_repository, _portfolio_builder_service
+    global _create_portfolio_command
 
     if _postgres_pool is not None:
         _postgres_pool.close()
@@ -420,3 +437,4 @@ def reset_dependencies() -> None:
     _simulation_service = None
     _simulation_repository = None
     _portfolio_builder_service = None
+    _create_portfolio_command = None
