@@ -80,7 +80,7 @@ The application follows a **page-based feature organization** with clear **view-
 
 - Node.js 18+
 - npm or yarn
-- Backend API running at http://localhost:8000
+- Backend API running at http://localhost:8001
 
 ### Installation
 
@@ -98,13 +98,13 @@ cp .env.example .env
 npm run dev
 ```
 
-The application will be available at http://localhost:3000.
+The application will be available at http://localhost:3001.
 
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VITE_API_URL` | Backend API URL | `http://localhost:8000` |
+| `VITE_API_URL` | Backend API URL | `http://localhost:8001` |
 
 ## Available Scripts
 

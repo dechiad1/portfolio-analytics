@@ -31,8 +31,8 @@ We want the handoff between OAuth2 flow & our application to be after we validat
 ### Testing
 - you have access to run tests
 - you have access to run playwright
-- the UI dev server is running on port 3000
-- the app server is running on port 8000
+- the UI dev server is running on port 3001
+- the app server is running on port 8001
 
 ---
 
@@ -140,7 +140,7 @@ oauth:
   issuer_url: http://localhost:8080/default
   client_id: portfolio-analytics
   client_secret: portfolio-secret
-  redirect_uri: http://localhost:8000/oauth/callback
+  redirect_uri: http://localhost:8001/oauth/callback
 ```
 
 ### 3.4 Register Router
