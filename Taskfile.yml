@@ -153,12 +153,6 @@ tasks:
       - poetry run dbt seed
       - poetry run dbt run --select dim_ticker_tracker
 
-  dbt:test:
-    desc: Run DBT tests
-    dir: portfolio_analytics/dbt
-    cmds:
-      - poetry run dbt test
-
   dbt:docs:
     desc: Generate and serve DBT documentation
     dir: portfolio_analytics/dbt
@@ -267,6 +261,39 @@ tasks:
         else
           echo "mock-oauth2-server is not accessible. Run 'task docker:up' first."
         fi
+
+  # =============================================================================
+  # TESTING
+  # =============================================================================
+  test:unit:
+    desc: Run all unit tests (backend and frontend)
+    cmds:
+      - task: test:be
+      - task: test:fe
+
+  test:be:
+    desc: Run backend unit tests
+    dir: api
+    cmds:
+      - poetry run pytest
+
+  test:fe:
+    desc: Run frontend unit tests
+    dir: web
+    cmds:
+      - npm run test
+
+  test:dbt:
+    desc: Run DBT tests
+    dir: portfolio_analytics/dbt
+    cmds:
+      - poetry run dbt test
+
+  test:integration:
+    desc: Run Playwright integration tests
+    dir: web
+    cmds:
+      - npx playwright test
 
   # =============================================================================
   # DEVELOPMENT UTILITIES
