@@ -1,0 +1,56 @@
+.trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.tooltip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: 360px;
+  min-width: 200px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  white-space: normal;
+  text-align: left;
+}
+
+.top {
+  bottom: calc(100% + 8px);
+}
+
+.bottom {
+  top: calc(100% + 8px);
+}
+
+.arrow {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+}
+
+.top .arrow {
+  bottom: -5px;
+  border-top: none;
+  border-left: none;
+}
+
+.bottom .arrow {
+  top: -5px;
+  border-bottom: none;
+  border-right: none;
+}

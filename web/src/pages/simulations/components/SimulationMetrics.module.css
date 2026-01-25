@@ -1,0 +1,199 @@
+.container {
+  margin-bottom: 2rem;
+}
+
+.title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.card {
+  padding: 1.25rem;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-primary);
+  background-color: var(--color-primary-bg);
+  border-radius: 0.375rem;
+}
+
+.cardIconWarning {
+  color: var(--color-warning, #f59e0b);
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.cardIconSuccess {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.cardIconDanger {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+}
+
+.cardLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  border-bottom: 1px dashed var(--color-text-tertiary);
+}
+
+.cardBody {
+  padding-left: calc(36px + 0.75rem);
+}
+
+.mainValue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-bottom: 0.75rem;
+}
+
+.valueBig {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.valueHint {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  border-bottom: 1px dashed var(--color-text-tertiary);
+}
+
+.valueSuccess {
+  color: var(--color-success);
+}
+
+.valueWarning {
+  color: var(--color-warning, #f59e0b);
+}
+
+.valueDanger {
+  color: var(--color-error);
+}
+
+.subValues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.subValue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.subLabel {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+}
+
+.subValue span:last-child {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.returnBadge {
+  display: inline-block;
+}
+
+.returnBadge span {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+}
+
+.positive {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.negative {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+}
+
+.riskGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.riskItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.riskLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.riskValue {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ruinDescription {
+  display: inline;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px dashed var(--color-text-tertiary);
+}
+
+/* Tablet: 2 columns */
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid > .card:first-child {
+    grid-column: span 2;
+  }
+}
+
+/* Desktop: 3 columns */
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid > .card:first-child {
+    grid-column: span 1;
+  }
+}

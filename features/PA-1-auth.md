@@ -2,6 +2,12 @@
 
 Remember to read the content in CLAUDE.md, .claude/agents & .claude/reference FIRST to understand the coding conventions, desired repository structures & goal of the project
 
+### Completion
+when all the tasks are fully complete & tested, print just DONEZO. 
+
+DO NOT SKIP THIS STEP. IT IS REQUIRED WHEN FULLY COMPLETE
+
+
 ### Description
 This application will have users that persit data over time. We want to keep track of users & user information in our database but not handle log in flow. We want to integrate with google & apple OAuth2 flows so that a user can create an account on this application with their google or apple account. After the user creates an account, they will then be able to login with it when they return. For local development, we should use a trusted image that acts as an identity provider playing the role of google/apple that is ephemeral & fully contained in our local environment.
 
@@ -27,11 +33,6 @@ We want the handoff between OAuth2 flow & our application to be after we validat
 - you have access to run playwright
 - the UI dev server is running on port 3000
 - the app server is running on port 8000
-
-### Completion
-when all the tasks are fully complete & tested, print just DONEZO. 
-
-DO NOT SKIP THIS STEP. IT IS REQUIRED WHEN FULLY COMPLETE
 
 ---
 

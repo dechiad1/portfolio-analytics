@@ -14,12 +14,12 @@ export function getOAuthLoginUrl(): string {
  * Logout - clears session cookie via API.
  */
 export async function logout(): Promise<void> {
-  return api.post<void>('/oauth/logout', undefined, { skipAuth: true });
+  return api.post<void>('/oauth/logout');
 }
 
 /**
  * Get the current authenticated user (from session cookie).
  */
 export async function getCurrentUser(): Promise<User> {
-  return api.get<User>('/oauth/me', { skipAuth: true });
+  return api.get<User>('/oauth/me');
 }

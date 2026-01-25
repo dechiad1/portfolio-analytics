@@ -1,0 +1,113 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.deleteButton:hover:not(:disabled) {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+}
+
+.deleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.config {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.metricValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.metricSuccess {
+  color: var(--color-success);
+}
+
+.metricWarning {
+  color: var(--color-warning, #f59e0b);
+}
+
+.metricDanger {
+  color: var(--color-error);
+}
+
+.timestamp {
+  margin: 0;
+  font-size: 0.625rem;
+  color: var(--color-text-tertiary);
+  text-align: right;
+}

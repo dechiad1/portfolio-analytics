@@ -76,6 +76,26 @@ sources:
           - name: top_sectors
             description: Top sector weightings
 
+      - name: raw_analyst_targets
+        description: Analyst price targets from Yahoo Finance API
+        columns:
+          - name: ticker
+            description: Stock/fund ticker symbol
+          - name: current_price
+            description: Current market price
+          - name: target_mean_price
+            description: Mean analyst 12-month price target
+          - name: target_high_price
+            description: Highest analyst price target
+          - name: target_low_price
+            description: Lowest analyst price target
+          - name: analyst_count
+            description: Number of analysts covering this security
+          - name: implied_return
+            description: Implied return from mean target (target/current - 1)
+          - name: fetched_at
+            description: Timestamp when data was fetched
+
   # =============================================================================
   # POSTGRES REPLICATED DATA (transactional system of record)
   # =============================================================================

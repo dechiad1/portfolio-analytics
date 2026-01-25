@@ -96,8 +96,8 @@ tasks:
   # VENDOR DATA FETCH
   # =============================================================================
   fetch:
-    desc: Fetch all vendor data (prices, benchmarks, treasury yields)
-    deps: [fetch:prices, fetch:benchmarks, fetch:treasury-yields, fetch:fund-metadata]
+    desc: Fetch all vendor data (prices, benchmarks, treasury yields, analyst targets)
+    deps: [replicate, fetch:prices, fetch:benchmarks, fetch:treasury-yields, fetch:fund-metadata, fetch:analyst-targets]
 
   fetch:prices:
     desc: Fetch historical equity/ETF price data from Yahoo Finance
@@ -118,6 +118,11 @@ tasks:
     desc: Fetch fund metadata from Yahoo Finance
     cmds:
       - poetry run python portfolio_analytics/scripts/ingest_fund_metadata.py
+
+  fetch:analyst-targets:
+    desc: Fetch analyst price targets from Yahoo Finance (for forward-looking returns)
+    cmds:
+      - poetry run python portfolio_analytics/scripts/ingest_analyst_targets.py
 
   # =============================================================================
   # DBT TRANSFORMATIONS

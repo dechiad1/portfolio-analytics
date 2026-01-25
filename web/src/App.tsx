@@ -7,6 +7,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { PortfolioListPage } from './pages/portfolios/PortfolioListPage';
 import { PortfolioDetailPage } from './pages/portfolios/PortfolioDetailPage';
 import { SecuritiesPage } from './pages/securities/SecuritiesPage';
+import { SimulationDetailPage } from './pages/simulations/SimulationDetailPage';
 
 /**
  * App is the root component that sets up routing and auth context.
@@ -31,6 +32,7 @@ function App() {
             <Route index element={<Navigate to="/portfolios" replace />} />
             <Route path="portfolios" element={<PortfolioListPage />} />
             <Route path="portfolios/:id" element={<PortfolioDetailPage />} />
+            <Route path="portfolios/:portfolioId/simulations/:simulationId" element={<SimulationDetailPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="securities" element={<SecuritiesPage />} />
           </Route>

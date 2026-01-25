@@ -1,7 +1,3 @@
-from api.schemas.session import (
-    SessionResponse,
-    CreateSessionResponse,
-)
 from api.schemas.holding import (
     HoldingResponse,
     CreateHoldingRequest,
@@ -25,8 +21,6 @@ from api.schemas.portfolio import (
 )
 
 __all__ = [
-    "SessionResponse",
-    "CreateSessionResponse",
     "HoldingResponse",
     "CreateHoldingRequest",
     "UpdateHoldingRequest",

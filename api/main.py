@@ -3,12 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import (
-    sessions_router,
     analytics_router,
     auth_router,
     oauth_router,
     portfolios_router,
     tickers_router,
+    simulations_router,
 )
 from dependencies import load_config
 
@@ -43,8 +43,10 @@ def create_app() -> FastAPI:
     # Ticker routes (no auth required)
     app.include_router(tickers_router)
 
+    # Simulation routes (auth required)
+    app.include_router(simulations_router)
+
     # Legacy routes (to be deprecated)
-    app.include_router(sessions_router)
     app.include_router(analytics_router)
 
     @app.get("/health", tags=["health"])
