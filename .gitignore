@@ -58,3 +58,5 @@ Thumbs.db
 
 # holdings
 holdings.csv
+
+web/playwright-report
