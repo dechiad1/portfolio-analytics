@@ -31,47 +31,22 @@ The API follows hexagonal architecture. See `.claude/reference/hexagonal-archite
 
 ## Issue Tracking (beads)
 
-Do not store sensitive information (passwords, API keys, secrets) in issue descriptions or metadata.
+This project uses [Beads](https://github.com/steveyegge/beads) for issue tracking. See `.beads/README.md` for basic commands.
 
-```bash
-bd ready              # Find available work
-bd create "Title"     # Create an issue
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
-```
+**Important:** Do not store sensitive information (passwords, API keys) in issue descriptions.
 
-### Git + Beads Workflow
+### Workflow
 
-Always work on feature branches, not main. Commit code and `.beads/` together so issue state stays in sync with code changes.
+Always work on feature branches, not main. Commit code and `.beads/` together so issue state stays in sync.
 
-**Starting work:**
 ```bash
 git checkout -b feature/my-feature
 bd update <id> --status in_progress
-```
-
-**Committing changes:**
-```bash
-# 1. Stage code AND beads together
-git add <changed-files> .beads/
-
-# 2. Sync beads (exports issue state to .beads/issues.jsonl)
+# ... make changes ...
+git add <files> .beads/
 bd sync
-
-# 3. Commit everything together
-git commit -m "Description of changes"
-
-# 4. Push
-git push -u origin feature/my-feature
-```
-
-**If `.beads/export-state/` shows as dirty after push:**
-
-This directory tracks beads' internal sync state. Hooks may update it after commits. If it's the only dirty file after pushing, restore it:
-```bash
-git checkout HEAD -- .beads/export-state/
+git commit -m "..."
+git push
 ```
 
 ### Session Completion
@@ -81,12 +56,5 @@ Work is NOT done until `git push` succeeds.
 1. File issues for remaining work (`bd create`)
 2. Run quality gates if code changed (`task test:unit`)
 3. Close completed issues (`bd close <id>`)
-4. Commit and push:
-   ```bash
-   git add <files> .beads/
-   bd sync
-   git commit -m "..."
-   git push
-   ```
-5. Clean up export-state if dirty: `git checkout HEAD -- .beads/export-state/`
-6. Verify `git status` shows clean working tree
+4. Commit and push
+5. Verify `git status` shows clean working tree
