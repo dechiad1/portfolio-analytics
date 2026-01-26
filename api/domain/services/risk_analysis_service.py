@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from domain.models.holding import Holding
@@ -5,13 +6,15 @@ from domain.ports.llm_repository import LLMRepository, RiskAnalysis
 from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.holding_repository import HoldingRepository
 
+LLM_UNAVAILABLE_MESSAGE = "LLM analysis unavailable. API key not configured."
+
 
 class RiskAnalysisService:
     """Service for portfolio risk analysis using LLM."""
 
     def __init__(
         self,
-        llm_repository: LLMRepository,
+        llm_repository: LLMRepository | None,
         portfolio_repository: PortfolioRepository,
         holding_repository: HoldingRepository,
     ) -> None:
@@ -43,6 +46,14 @@ class RiskAnalysisService:
         holdings_data = self._holdings_to_dict(holdings, summary["total_value"])
 
         # Get LLM analysis
+        if self._llm_repo is None:
+            return RiskAnalysis(
+                risks=[],
+                macro_climate_summary=LLM_UNAVAILABLE_MESSAGE,
+                analysis_timestamp=datetime.now(timezone.utc).isoformat(),
+                model_used="unavailable",
+            )
+
         return self._llm_repo.analyze_portfolio_risks(summary, holdings_data)
 
     def _calculate_summary(self, portfolio, holdings: list[Holding]) -> dict:
