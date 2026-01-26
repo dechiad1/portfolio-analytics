@@ -67,13 +67,6 @@ git commit -m "Description of changes"
 git push -u origin feature/my-feature
 ```
 
-**If `.beads/export-state/` shows as dirty after push:**
-
-This directory tracks beads' internal sync state. Hooks may update it after commits. If it's the only dirty file after pushing, restore it:
-```bash
-git checkout HEAD -- .beads/export-state/
-```
-
 ### Session Completion
 
 Work is NOT done until `git push` succeeds.
@@ -88,5 +81,4 @@ Work is NOT done until `git push` succeeds.
    git commit -m "..."
    git push
    ```
-5. Clean up export-state if dirty: `git checkout HEAD -- .beads/export-state/`
-6. Verify `git status` shows clean working tree
+5. Verify `git status` shows clean working tree
