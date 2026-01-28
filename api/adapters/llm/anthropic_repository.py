@@ -221,9 +221,10 @@ Provide a concise 3-4 paragraph summary of the current macro environment and its
             response_text = response.content[0].text
             json_str = self._extract_json(response_text)
             result = json.loads(json_str)
+            raw_confidence = float(result.get("confidence", 0.0))
             return DescriptionClassification(
                 is_portfolio_description=bool(result.get("is_portfolio_description", False)),
-                confidence=float(result.get("confidence", 0.0)),
+                confidence=min(1.0, max(0.0, raw_confidence)),
             )
         except (json.JSONDecodeError, KeyError, TypeError, anthropic.APIError):
             return DescriptionClassification(

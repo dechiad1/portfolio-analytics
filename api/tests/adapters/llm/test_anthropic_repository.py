@@ -55,6 +55,30 @@ class TestClassifyDescription:
         assert result.confidence == 0.0
         assert result.is_portfolio_description is False
 
+    def test_clamps_confidence_to_valid_range(self, repo):
+        """Should clamp confidence values to 0.0-1.0 range."""
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(text='{"is_portfolio_description": true, "confidence": 1.5}')
+        ]
+        repo._client.messages.create.return_value = mock_response
+
+        result = repo.classify_description("50% stocks")
+
+        assert result.confidence == 1.0
+
+    def test_clamps_negative_confidence_to_zero(self, repo):
+        """Should clamp negative confidence to 0.0."""
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(text='{"is_portfolio_description": false, "confidence": -0.5}')
+        ]
+        repo._client.messages.create.return_value = mock_response
+
+        result = repo.classify_description("anything")
+
+        assert result.confidence == 0.0
+
 
 class TestWeightBoundsFiltering:
     """Tests for weight bounds filtering in interpret_portfolio_description."""

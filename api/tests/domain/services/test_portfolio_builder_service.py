@@ -235,6 +235,30 @@ class TestBuildFromDescription:
         assert any("doesn't appear to be about a portfolio" in msg for msg in result.unmatched_descriptions)
         mock_llm.interpret_portfolio_description.assert_not_called()
 
+    def test_build_from_description_rejects_non_portfolio_with_high_confidence(self, mock_ticker_repository):
+        """Should reject when is_portfolio_description is False even with high confidence."""
+        from domain.ports.llm_repository import DescriptionClassification
+
+        mock_llm = MagicMock()
+        mock_llm.classify_description.return_value = DescriptionClassification(
+            is_portfolio_description=False,
+            confidence=0.99,
+        )
+
+        service = PortfolioBuilderService(
+            ticker_repository=mock_ticker_repository,
+            llm_repository=mock_llm,
+        )
+
+        result = service.build_from_description(
+            description="This is definitely not a portfolio",
+            total_value=Decimal("100000"),
+        )
+
+        assert len(result.allocations) == 0
+        assert any("doesn't appear to be about a portfolio" in msg for msg in result.unmatched_descriptions)
+        mock_llm.interpret_portfolio_description.assert_not_called()
+
 
 class TestSanitizeDescription:
     """Tests for description sanitization."""

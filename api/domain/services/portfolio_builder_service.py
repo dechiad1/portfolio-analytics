@@ -174,7 +174,10 @@ class PortfolioBuilderService:
 
         # Classify description before proceeding
         classification = self._llm_repository.classify_description(description)
-        if classification.confidence < self._CLASSIFICATION_CONFIDENCE_THRESHOLD:
+        if (
+            not classification.is_portfolio_description
+            or classification.confidence < self._CLASSIFICATION_CONFIDENCE_THRESHOLD
+        ):
             return PortfolioAllocation(
                 allocations=[],
                 total_value=total_value,
