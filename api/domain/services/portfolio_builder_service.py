@@ -1,4 +1,5 @@
 import random
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
@@ -31,6 +32,8 @@ class PortfolioAllocation:
 
 class PortfolioBuilderService:
     """Service for building portfolios with random or dictation-based allocation."""
+
+    _CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.90
 
     def __init__(
         self,
@@ -136,6 +139,15 @@ class PortfolioBuilderService:
         """Get all available securities for allocation."""
         return self._ticker_repository.get_all_securities()
 
+    @staticmethod
+    def _sanitize_description(description: str) -> str:
+        """Strip whitespace, collapse runs of whitespace, and remove control characters."""
+        # Remove control characters (keep newlines and tabs for readability)
+        sanitized = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", description)
+        # Collapse runs of whitespace into a single space
+        sanitized = re.sub(r"\s+", " ", sanitized)
+        return sanitized.strip()
+
     def build_from_description(
         self,
         description: str,
@@ -156,6 +168,23 @@ class PortfolioBuilderService:
                 allocations=[],
                 total_value=total_value,
                 unmatched_descriptions=["LLM service not available"],
+            )
+
+        description = self._sanitize_description(description)
+
+        # Classify description before proceeding
+        classification = self._llm_repository.classify_description(description)
+        if (
+            not classification.is_portfolio_description
+            or classification.confidence < self._CLASSIFICATION_CONFIDENCE_THRESHOLD
+        ):
+            return PortfolioAllocation(
+                allocations=[],
+                total_value=total_value,
+                unmatched_descriptions=[
+                    "Your description doesn't appear to be about a portfolio. "
+                    "Please update your description."
+                ],
             )
 
         securities = self._ticker_repository.get_all_securities()
