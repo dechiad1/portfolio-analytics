@@ -22,6 +22,7 @@ class CreatePortfolioRequest(BaseModel):
     )
     description: str | None = Field(
         default=None,
+        max_length=2000,
         description="Portfolio description for dictation mode",
     )
 

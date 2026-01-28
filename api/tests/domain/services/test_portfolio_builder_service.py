@@ -170,9 +170,14 @@ class TestBuildFromDescription:
         from domain.ports.llm_repository import (
             AllocationInterpretation,
             PortfolioInterpretation,
+            DescriptionClassification,
         )
 
         mock_llm = MagicMock()
+        mock_llm.classify_description.return_value = DescriptionClassification(
+            is_portfolio_description=True,
+            confidence=0.95,
+        )
         mock_llm.interpret_portfolio_description.return_value = PortfolioInterpretation(
             allocations=[
                 AllocationInterpretation(
@@ -205,6 +210,54 @@ class TestBuildFromDescription:
         assert result.allocations[0].value == Decimal("50000.00")
         assert result.allocations[1].ticker == "MSFT"
         assert result.allocations[1].value == Decimal("50000.00")
+
+    def test_build_from_description_low_confidence_short_circuits(self, mock_ticker_repository):
+        """Should reject descriptions that do not classify as portfolio text."""
+        from domain.ports.llm_repository import DescriptionClassification
+
+        mock_llm = MagicMock()
+        mock_llm.classify_description.return_value = DescriptionClassification(
+            is_portfolio_description=False,
+            confidence=0.2,
+        )
+
+        service = PortfolioBuilderService(
+            ticker_repository=mock_ticker_repository,
+            llm_repository=mock_llm,
+        )
+
+        result = service.build_from_description(
+            description="Tell me a joke about cats",
+            total_value=Decimal("100000"),
+        )
+
+        assert len(result.allocations) == 0
+        assert any("doesn't appear to be about a portfolio" in msg for msg in result.unmatched_descriptions)
+        mock_llm.interpret_portfolio_description.assert_not_called()
+
+
+class TestSanitizeDescription:
+    """Tests for description sanitization."""
+
+    def test_strips_control_characters(self):
+        """Should remove control characters from description."""
+        raw = "50% AAPL\x00\x01\x02, 50% MSFT"
+        result = PortfolioBuilderService._sanitize_description(raw)
+        assert "\x00" not in result
+        assert "\x01" not in result
+        assert "50% AAPL" in result
+
+    def test_collapses_excess_whitespace(self):
+        """Should collapse multiple spaces/newlines into single space."""
+        raw = "50%   AAPL\n\n\n50%   MSFT"
+        result = PortfolioBuilderService._sanitize_description(raw)
+        assert result == "50% AAPL 50% MSFT"
+
+    def test_strips_leading_trailing_whitespace(self):
+        """Should strip leading and trailing whitespace."""
+        raw = "   50% AAPL   "
+        result = PortfolioBuilderService._sanitize_description(raw)
+        assert result == "50% AAPL"
 
 
 class TestGetAvailableSecurities:
