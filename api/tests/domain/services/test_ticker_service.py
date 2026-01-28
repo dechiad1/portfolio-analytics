@@ -70,3 +70,8 @@ class TestGetUserAddedTickers:
         result = ticker_service.get_user_added_tickers()
         assert len(result) == 1
         assert result[0].ticker == "TSLA"
+
+    def test_returns_empty_list(self, ticker_service, mock_repository):
+        mock_repository.get_user_added_tickers.return_value = []
+        result = ticker_service.get_user_added_tickers()
+        assert result == []

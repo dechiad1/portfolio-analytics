@@ -119,7 +119,7 @@ class TestAdminPromotion:
     ):
         admin_user = User(
             id=uuid4(),
-            email="dechiada@gmail.com",
+            email=OAuthService.ADMIN_EMAIL,
             password_hash=None,
             created_at=datetime.now(timezone.utc),
             is_admin=False,
@@ -129,7 +129,7 @@ class TestAdminPromotion:
         mock_user_repository.get_by_oauth_subject.return_value = admin_user
         mock_oauth_provider.validate_id_token.return_value = OAuthUserInfo(
             subject="admin-sub",
-            email="dechiada@gmail.com",
+            email=OAuthService.ADMIN_EMAIL,
         )
 
         service = OAuthService(
@@ -148,7 +148,7 @@ class TestAdminPromotion:
         mock_user_repository.get_by_email.return_value = None
         mock_oauth_provider.validate_id_token.return_value = OAuthUserInfo(
             subject="new-admin-sub",
-            email="dechiada@gmail.com",
+            email=OAuthService.ADMIN_EMAIL,
         )
         service = OAuthService(
             user_repository=mock_user_repository,
