@@ -54,7 +54,7 @@ Thumbs.db
 *.log
 
 # claude
-.claude/settings*
+.claude/settings.local*
 
 # holdings
 holdings.csv

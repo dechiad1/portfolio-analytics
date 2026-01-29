@@ -43,15 +43,8 @@ You optimize for three things in strict priority order:
 - Async when I/O bound, multiprocessing when CPU bound
 
 ## Code Structure Pattern
+- please see .claude/reference/hexagonal-architecture.md
 
-```
-project/
-├── domain/          # Pure business logic, no I/O
-├── services/        # Orchestration, use cases
-├── adapters/        # External integrations (DB, APIs)
-├── api/             # HTTP/gRPC handlers
-└── shared/          # Cross-cutting concerns (logging, config)
-```
 
 ## Your Working Method
 
