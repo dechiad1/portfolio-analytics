@@ -1,0 +1,85 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(poetry install:*)",
+      "Bash(poetry lock:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_console_messages",
+      "Bash(grep:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(dbt run:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(source:*)",
+      "Bash(python portfolio_analytics/scripts/replicate_postgres_to_duckdb.py:*)",
+      "Bash(python -c:*)",
+      "mcp__playwright__browser_network_requests",
+      "Bash(npx tsc --noEmit)",
+      "Bash(PGPASSWORD=postgres psql:*)",
+      "Bash(poetry run duckdb:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(task:*)",
+      "Bash(docker ps:*)",
+      "Bash(lsof:*)",
+      "Bash(docker logs:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(poetry run pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(gh pr list:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(xargs:*)",
+      "Bash(overmind:*)",
+      "Bash(overmind echo:*)",
+      "Bash(git checkout:*)",
+      "Bash(bd doctor --fix)",
+      "Bash(bd hooks install:*)",
+      "Bash(bd ready:*)",
+      "Bash(wc:*)",
+      "Bash(bd create:*)",
+      "Bash(bd dep add:*)",
+      "Bash(bd list:*)",
+      "Bash(bd show:*)",
+      "Bash(bd update:*)",
+      "Bash(bd close:*)",
+      "Bash(bd sync:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git fetch:*)",
+      "Bash(openspec list:*)",
+      "Bash(openspec status:*)",
+      "Bash(bd search:*)"
+    ]
+  },
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd prime"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd prime"
+          }
+        ]
+      }
+    ]
+  }
+}
