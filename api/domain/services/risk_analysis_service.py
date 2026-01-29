@@ -1,12 +1,27 @@
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from domain.models.holding import Holding
-from domain.ports.llm_repository import LLMRepository, RiskAnalysis
+from domain.models.risk_analysis import RiskAnalysis
+from domain.ports.llm_repository import LLMRepository
+from domain.ports.llm_repository import RiskAnalysis as LLMRiskAnalysis
 from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.holding_repository import HoldingRepository
+from domain.ports.risk_analysis_repository import RiskAnalysisRepository
 
 LLM_UNAVAILABLE_MESSAGE = "LLM analysis unavailable. API key not configured."
+
+
+class RiskAnalysisNotFoundError(Exception):
+    """Raised when a risk analysis is not found."""
+
+    pass
+
+
+class RiskAnalysisAccessDeniedError(Exception):
+    """Raised when access to a risk analysis is denied."""
+
+    pass
 
 
 class RiskAnalysisService:
@@ -17,10 +32,12 @@ class RiskAnalysisService:
         llm_repository: LLMRepository | None,
         portfolio_repository: PortfolioRepository,
         holding_repository: HoldingRepository,
+        risk_analysis_repository: RiskAnalysisRepository | None = None,
     ) -> None:
         self._llm_repo = llm_repository
         self._portfolio_repo = portfolio_repository
         self._holding_repo = holding_repository
+        self._risk_analysis_repo = risk_analysis_repository
 
     def analyze_portfolio_risks(
         self,
@@ -28,7 +45,10 @@ class RiskAnalysisService:
         user_id: UUID,
         is_admin: bool = False,
     ) -> RiskAnalysis:
-        """Analyze risks for a portfolio using LLM with macro context."""
+        """Analyze risks for a portfolio using LLM with macro context.
+
+        Persists the result if a repository is configured.
+        """
         # Get portfolio
         portfolio = self._portfolio_repo.get_by_id(portfolio_id)
         if portfolio is None:
@@ -47,14 +67,95 @@ class RiskAnalysisService:
 
         # Get LLM analysis
         if self._llm_repo is None:
-            return RiskAnalysis(
+            llm_result = LLMRiskAnalysis(
                 risks=[],
                 macro_climate_summary=LLM_UNAVAILABLE_MESSAGE,
                 analysis_timestamp=datetime.now(timezone.utc).isoformat(),
                 model_used="unavailable",
             )
+        else:
+            llm_result = self._llm_repo.analyze_portfolio_risks(summary, holdings_data)
 
-        return self._llm_repo.analyze_portfolio_risks(summary, holdings_data)
+        # Create domain model
+        analysis = RiskAnalysis(
+            id=uuid4(),
+            portfolio_id=portfolio_id,
+            risks=llm_result.risks,
+            macro_climate_summary=llm_result.macro_climate_summary,
+            model_used=llm_result.model_used,
+            created_at=datetime.now(timezone.utc),
+        )
+
+        # Persist if repository is available
+        if self._risk_analysis_repo is not None:
+            analysis = self._risk_analysis_repo.create(analysis)
+
+        return analysis
+
+    def get_analysis(
+        self,
+        analysis_id: UUID,
+        user_id: UUID,
+        is_admin: bool = False,
+    ) -> RiskAnalysis:
+        """Get a specific risk analysis by ID."""
+        if self._risk_analysis_repo is None:
+            raise RiskAnalysisNotFoundError(f"Risk analysis {analysis_id} not found")
+
+        analysis = self._risk_analysis_repo.get_by_id(analysis_id)
+        if analysis is None:
+            raise RiskAnalysisNotFoundError(f"Risk analysis {analysis_id} not found")
+
+        # Verify access
+        portfolio = self._portfolio_repo.get_by_id(analysis.portfolio_id)
+        if portfolio is None:
+            raise RiskAnalysisNotFoundError(f"Risk analysis {analysis_id} not found")
+        if not is_admin and portfolio.user_id != user_id:
+            raise RiskAnalysisAccessDeniedError("Access denied to this risk analysis")
+
+        return analysis
+
+    def list_analyses(
+        self,
+        portfolio_id: UUID,
+        user_id: UUID,
+        is_admin: bool = False,
+    ) -> list[RiskAnalysis]:
+        """List all risk analyses for a portfolio, ordered by created_at desc."""
+        # Verify portfolio access
+        portfolio = self._portfolio_repo.get_by_id(portfolio_id)
+        if portfolio is None:
+            raise ValueError(f"Portfolio {portfolio_id} not found")
+        if not is_admin and portfolio.user_id != user_id:
+            raise ValueError("Access denied to this portfolio")
+
+        if self._risk_analysis_repo is None:
+            return []
+
+        return self._risk_analysis_repo.get_by_portfolio_id(portfolio_id)
+
+    def delete_analysis(
+        self,
+        analysis_id: UUID,
+        user_id: UUID,
+        is_admin: bool = False,
+    ) -> bool:
+        """Delete a risk analysis by ID. Returns True if deleted."""
+        if self._risk_analysis_repo is None:
+            raise RiskAnalysisNotFoundError(f"Risk analysis {analysis_id} not found")
+
+        # Verify access via portfolio ownership
+        portfolio_id = self._risk_analysis_repo.get_portfolio_id_for_analysis(analysis_id)
+        if portfolio_id is None:
+            raise RiskAnalysisNotFoundError(f"Risk analysis {analysis_id} not found")
+
+        portfolio = self._portfolio_repo.get_by_id(portfolio_id)
+        if portfolio is None:
+            raise RiskAnalysisNotFoundError(f"Risk analysis {analysis_id} not found")
+        if not is_admin and portfolio.user_id != user_id:
+            raise RiskAnalysisAccessDeniedError("Access denied to this risk analysis")
+
+        return self._risk_analysis_repo.delete(analysis_id)
 
     def _calculate_summary(self, portfolio, holdings: list[Holding]) -> dict:
         """Calculate portfolio summary statistics."""

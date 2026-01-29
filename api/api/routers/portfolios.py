@@ -35,11 +35,20 @@ from api.schemas.holding import (
     HoldingListResponse,
     BulkCreateHoldingsResponse,
 )
-from api.schemas.risk_analysis import RiskAnalysisResponse, RiskItem
+from api.schemas.risk_analysis import (
+    RiskAnalysisResponse,
+    RiskItem,
+    RiskAnalysisListItem,
+    RiskAnalysisListResponse,
+)
 from api.mappers.portfolio_mapper import PortfolioMapper
 from api.mappers.holding_mapper import HoldingMapper
 from api.routers.auth import get_current_user_id, get_current_user_full
-from domain.services.risk_analysis_service import RiskAnalysisService
+from domain.services.risk_analysis_service import (
+    RiskAnalysisService,
+    RiskAnalysisNotFoundError,
+    RiskAnalysisAccessDeniedError,
+)
 from dependencies import (
     get_portfolio_service,
     get_holding_service,
@@ -506,6 +515,7 @@ def delete_holding(
 @router.post(
     "/{portfolio_id}/risk-analysis",
     response_model=RiskAnalysisResponse,
+    status_code=status.HTTP_201_CREATED,
     summary="Analyze portfolio risks using AI",
 )
 def analyze_portfolio_risks(
@@ -523,27 +533,55 @@ def analyze_portfolio_risks(
     - And more...
 
     Returns actionable mitigation strategies for each risk.
+    The analysis is persisted and can be retrieved later.
     """
     try:
         analysis = risk_service.analyze_portfolio_risks(
             portfolio_id, current_user.id, is_admin=current_user.is_admin
         )
-        return RiskAnalysisResponse(
-            risks=[
-                RiskItem(
-                    category=r.get("category", "Unknown"),
-                    severity=r.get("severity", "Medium"),
-                    title=r.get("title", ""),
-                    description=r.get("description", ""),
-                    affected_holdings=r.get("affected_holdings", []),
-                    potential_impact=r.get("potential_impact", ""),
-                    mitigation=r.get("mitigation", ""),
+        return _analysis_to_response(analysis)
+    except ValueError as e:
+        if "not found" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        elif "Access denied" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.get(
+    "/{portfolio_id}/risk-analyses",
+    response_model=RiskAnalysisListResponse,
+    summary="List risk analyses for a portfolio",
+)
+def list_risk_analyses(
+    portfolio_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    risk_service: Annotated[RiskAnalysisService, Depends(get_risk_analysis_service)],
+) -> RiskAnalysisListResponse:
+    """List all risk analyses for a portfolio, ordered by date descending."""
+    try:
+        analyses = risk_service.list_analyses(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
+        return RiskAnalysisListResponse(
+            analyses=[
+                RiskAnalysisListItem(
+                    id=a.id,
+                    created_at=a.created_at,
+                    model_used=a.model_used,
+                    risk_count=len(a.risks),
                 )
-                for r in analysis.risks
-            ],
-            macro_climate_summary=analysis.macro_climate_summary,
-            analysis_timestamp=analysis.analysis_timestamp,
-            model_used=analysis.model_used,
+                for a in analyses
+            ]
         )
     except ValueError as e:
         if "not found" in str(e):
@@ -560,3 +598,97 @@ def analyze_portfolio_risks(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.get(
+    "/{portfolio_id}/risk-analyses/{analysis_id}",
+    response_model=RiskAnalysisResponse,
+    summary="Get a specific risk analysis",
+)
+def get_risk_analysis(
+    portfolio_id: UUID,
+    analysis_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    risk_service: Annotated[RiskAnalysisService, Depends(get_risk_analysis_service)],
+) -> RiskAnalysisResponse:
+    """Get a specific risk analysis by ID."""
+    try:
+        analysis = risk_service.get_analysis(
+            analysis_id, current_user.id, is_admin=current_user.is_admin
+        )
+        # Verify the analysis belongs to the specified portfolio
+        if analysis.portfolio_id != portfolio_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Risk analysis {analysis_id} not found in portfolio {portfolio_id}",
+            )
+        return _analysis_to_response(analysis)
+    except RiskAnalysisNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Risk analysis {analysis_id} not found",
+        )
+    except RiskAnalysisAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this risk analysis",
+        )
+
+
+@router.delete(
+    "/{portfolio_id}/risk-analyses/{analysis_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a risk analysis",
+)
+def delete_risk_analysis(
+    portfolio_id: UUID,
+    analysis_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    risk_service: Annotated[RiskAnalysisService, Depends(get_risk_analysis_service)],
+) -> None:
+    """Delete a risk analysis by ID."""
+    try:
+        # First get the analysis to verify it belongs to the portfolio
+        analysis = risk_service.get_analysis(
+            analysis_id, current_user.id, is_admin=current_user.is_admin
+        )
+        if analysis.portfolio_id != portfolio_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Risk analysis {analysis_id} not found in portfolio {portfolio_id}",
+            )
+        risk_service.delete_analysis(
+            analysis_id, current_user.id, is_admin=current_user.is_admin
+        )
+    except RiskAnalysisNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Risk analysis {analysis_id} not found",
+        )
+    except RiskAnalysisAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this risk analysis",
+        )
+
+
+def _analysis_to_response(analysis) -> RiskAnalysisResponse:
+    """Convert a RiskAnalysis domain model to a response."""
+    return RiskAnalysisResponse(
+        id=analysis.id,
+        risks=[
+            RiskItem(
+                category=r.get("category", "Unknown"),
+                severity=r.get("severity", "Medium"),
+                title=r.get("title", ""),
+                description=r.get("description", ""),
+                affected_holdings=r.get("affected_holdings", []),
+                potential_impact=r.get("potential_impact", ""),
+                mitigation=r.get("mitigation", ""),
+            )
+            for r in analysis.risks
+        ],
+        macro_climate_summary=analysis.macro_climate_summary,
+        created_at=analysis.created_at,
+        model_used=analysis.model_used,
+    )
