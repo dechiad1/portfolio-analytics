@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
 from domain.models.user import User
+from domain.models.risk_analysis import RiskAnalysis
 from domain.services.portfolio_service import (
     PortfolioService,
     PortfolioNotFoundError,
@@ -540,20 +541,15 @@ def analyze_portfolio_risks(
             portfolio_id, current_user.id, is_admin=current_user.is_admin
         )
         return _analysis_to_response(analysis)
-    except ValueError as e:
-        if "not found" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        elif "Access denied" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            )
+    except PortfolioNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+    except PortfolioAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this portfolio",
         )
 
 
@@ -583,20 +579,15 @@ def list_risk_analyses(
                 for a in analyses
             ]
         )
-    except ValueError as e:
-        if "not found" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        elif "Access denied" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            )
+    except PortfolioNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+    except PortfolioAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this portfolio",
         )
 
 
@@ -672,7 +663,7 @@ def delete_risk_analysis(
         )
 
 
-def _analysis_to_response(analysis) -> RiskAnalysisResponse:
+def _analysis_to_response(analysis: RiskAnalysis) -> RiskAnalysisResponse:
     """Convert a RiskAnalysis domain model to a response."""
     return RiskAnalysisResponse(
         id=analysis.id,

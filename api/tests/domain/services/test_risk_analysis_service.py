@@ -15,6 +15,10 @@ from domain.services.risk_analysis_service import (
     RiskAnalysisNotFoundError,
     RiskAnalysisAccessDeniedError,
 )
+from domain.services.portfolio_service import (
+    PortfolioNotFoundError,
+    PortfolioAccessDeniedError,
+)
 
 
 @pytest.fixture
@@ -188,7 +192,7 @@ class TestRiskAnalysisServiceAccessControl:
         user_id,
         mock_holding_repository,
     ):
-        """Should raise ValueError when portfolio does not exist."""
+        """Should raise PortfolioNotFoundError when portfolio does not exist."""
         portfolio_repo = MagicMock()
         portfolio_repo.get_by_id.return_value = None
 
@@ -198,7 +202,7 @@ class TestRiskAnalysisServiceAccessControl:
             holding_repository=mock_holding_repository,
         )
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(PortfolioNotFoundError):
             service.analyze_portfolio_risks(portfolio_id, user_id)
 
     def test_raises_when_user_not_owner(
@@ -207,7 +211,7 @@ class TestRiskAnalysisServiceAccessControl:
         mock_portfolio,
         mock_holding_repository,
     ):
-        """Should raise ValueError when user is not the portfolio owner."""
+        """Should raise PortfolioAccessDeniedError when user is not the portfolio owner."""
         other_user_id = uuid4()
         portfolio_repo = MagicMock()
         portfolio_repo.get_by_id.return_value = mock_portfolio
@@ -218,7 +222,7 @@ class TestRiskAnalysisServiceAccessControl:
             holding_repository=mock_holding_repository,
         )
 
-        with pytest.raises(ValueError, match="Access denied"):
+        with pytest.raises(PortfolioAccessDeniedError):
             service.analyze_portfolio_risks(portfolio_id, other_user_id)
 
     def test_admin_can_access_any_portfolio(

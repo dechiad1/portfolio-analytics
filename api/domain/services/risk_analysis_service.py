@@ -8,6 +8,10 @@ from domain.ports.llm_repository import RiskAnalysis as LLMRiskAnalysis
 from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.holding_repository import HoldingRepository
 from domain.ports.risk_analysis_repository import RiskAnalysisRepository
+from domain.services.portfolio_service import (
+    PortfolioNotFoundError,
+    PortfolioAccessDeniedError,
+)
 
 LLM_UNAVAILABLE_MESSAGE = "LLM analysis unavailable. API key not configured."
 
@@ -52,9 +56,9 @@ class RiskAnalysisService:
         # Get portfolio
         portfolio = self._portfolio_repo.get_by_id(portfolio_id)
         if portfolio is None:
-            raise ValueError(f"Portfolio {portfolio_id} not found")
+            raise PortfolioNotFoundError(f"Portfolio {portfolio_id} not found")
         if not is_admin and portfolio.user_id != user_id:
-            raise ValueError("Access denied to this portfolio")
+            raise PortfolioAccessDeniedError("Access denied to this portfolio")
 
         # Get holdings
         holdings = self._holding_repo.get_by_portfolio_id(portfolio_id)
@@ -125,9 +129,9 @@ class RiskAnalysisService:
         # Verify portfolio access
         portfolio = self._portfolio_repo.get_by_id(portfolio_id)
         if portfolio is None:
-            raise ValueError(f"Portfolio {portfolio_id} not found")
+            raise PortfolioNotFoundError(f"Portfolio {portfolio_id} not found")
         if not is_admin and portfolio.user_id != user_id:
-            raise ValueError("Access denied to this portfolio")
+            raise PortfolioAccessDeniedError("Access denied to this portfolio")
 
         if self._risk_analysis_repo is None:
             return []
