@@ -124,6 +124,7 @@ _portfolio_builder_service = None
 _create_portfolio_command = None
 _unit_of_work = None
 _portfolio_builder_repository = None
+_risk_analysis_repository = None
 
 
 def get_postgres_pool():
@@ -277,6 +278,16 @@ def get_llm_repository():
     return _llm_repository
 
 
+def get_risk_analysis_repository():
+    """Get or create RiskAnalysisRepository instance."""
+    global _risk_analysis_repository
+    if _risk_analysis_repository is None:
+        from adapters.postgres.risk_analysis_repository import PostgresRiskAnalysisRepository
+
+        _risk_analysis_repository = PostgresRiskAnalysisRepository(get_postgres_pool())
+    return _risk_analysis_repository
+
+
 def get_risk_analysis_service():
     """Get or create RiskAnalysisService instance for FastAPI dependency injection."""
     global _risk_analysis_service
@@ -287,6 +298,7 @@ def get_risk_analysis_service():
             llm_repository=get_llm_repository(),
             portfolio_repository=get_portfolio_repository(),
             holding_repository=get_holding_repository(),
+            risk_analysis_repository=get_risk_analysis_repository(),
         )
     return _risk_analysis_service
 
@@ -432,7 +444,7 @@ def reset_dependencies() -> None:
     global _user_repository, _portfolio_repository
     global _analytics_repository, _holding_service
     global _auth_service, _oauth_provider, _oauth_service, _portfolio_service
-    global _llm_repository, _risk_analysis_service
+    global _llm_repository, _risk_analysis_service, _risk_analysis_repository
     global _compute_analytics_command
     global _ticker_validator, _ticker_repository, _ticker_service
     global _simulation_params_repository, _simulation_service
@@ -454,6 +466,7 @@ def reset_dependencies() -> None:
     _portfolio_service = None
     _llm_repository = None
     _risk_analysis_service = None
+    _risk_analysis_repository = None
     _compute_analytics_command = None
     _ticker_validator = None
     _ticker_repository = None

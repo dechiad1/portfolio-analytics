@@ -4,6 +4,7 @@ from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.analytics_repository import AnalyticsRepository
 from domain.ports.ticker_validator import TickerValidator
 from domain.ports.ticker_repository import TickerRepository
+from domain.ports.risk_analysis_repository import RiskAnalysisRepository
 
 # Re-export value objects for backwards compatibility
 from domain.value_objects import (
@@ -20,6 +21,7 @@ __all__ = [
     "UserRepository",
     "PortfolioRepository",
     "AnalyticsRepository",
+    "RiskAnalysisRepository",
     "TickerPerformance",
     "FundMetadata",
     "TickerDetails",
