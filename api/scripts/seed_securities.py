@@ -17,8 +17,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import uuid4
 
-import psycopg2
-from psycopg2.extras import execute_values
+import psycopg
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -422,10 +421,10 @@ TREASURY_BONDS = [
 def get_connection():
     """Create a database connection from config."""
     config = load_config()
-    return psycopg2.connect(
+    return psycopg.connect(
         host=config.database.postgres.host,
         port=config.database.postgres.port,
-        database=config.database.postgres.database,
+        dbname=config.database.postgres.database,
         user=config.database.postgres.user,
         password=config.database.postgres.password,
     )
