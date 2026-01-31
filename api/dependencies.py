@@ -125,6 +125,7 @@ _create_portfolio_command = None
 _unit_of_work = None
 _portfolio_builder_repository = None
 _risk_analysis_repository = None
+_scenario_selection_service = None
 
 
 def get_postgres_pool():
@@ -438,6 +439,19 @@ def get_create_portfolio_command():
     return _create_portfolio_command
 
 
+def get_scenario_selection_service():
+    """Get or create ScenarioSelectionService instance."""
+    global _scenario_selection_service
+    if _scenario_selection_service is None:
+        from domain.services.scenario_selection_service import ScenarioSelectionService
+
+        _scenario_selection_service = ScenarioSelectionService(
+            analytics_repository=get_analytics_repository(),
+            llm_repository=get_llm_repository(),
+        )
+    return _scenario_selection_service
+
+
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
     global _postgres_pool, _holding_repository
@@ -450,6 +464,7 @@ def reset_dependencies() -> None:
     global _simulation_params_repository, _simulation_service
     global _simulation_repository, _portfolio_builder_service
     global _create_portfolio_command, _unit_of_work, _portfolio_builder_repository
+    global _scenario_selection_service
 
     if _postgres_pool is not None:
         _postgres_pool.close()
@@ -478,3 +493,4 @@ def reset_dependencies() -> None:
     _create_portfolio_command = None
     _unit_of_work = None
     _portfolio_builder_repository = None
+    _scenario_selection_service = None

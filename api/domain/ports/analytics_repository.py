@@ -6,6 +6,7 @@ from domain.value_objects import (
     FundMetadata,
     TickerDetails,
     TickerPriceAtDate,
+    EnrichedSecurity,
 )
 
 
@@ -42,4 +43,14 @@ class AnalyticsRepository(ABC):
     @abstractmethod
     def get_price_for_date(self, ticker: str, price_date: date) -> TickerPriceAtDate | None:
         """Get the price for a ticker at or before a specific date."""
+        pass
+
+    @abstractmethod
+    def get_enriched_securities(self) -> list[EnrichedSecurity]:
+        """
+        Get all securities with enriched data for scenario-based LLM selection.
+
+        Returns securities with fundamentals, scenario flags, and historical performance
+        from the dim_security_enriched mart.
+        """
         pass

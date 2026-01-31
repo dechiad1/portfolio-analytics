@@ -116,6 +116,51 @@ class OAuthUserInfo:
     name: str | None = None
 
 
+@dataclass(frozen=True)
+class EnrichedSecurity:
+    """Enriched security data from analytics warehouse for scenario-based selection."""
+
+    # Core identity
+    ticker: str
+    display_name: str
+    asset_type: str
+    sector: str | None
+    industry: str | None
+    country: str | None
+    exchange: str | None
+    # Market dynamics
+    market_cap: float | None
+    market_cap_category: str | None  # mega, large, mid, small, micro
+    beta: float | None
+    annualized_volatility: float | None
+    # Valuation
+    trailing_pe: float | None
+    forward_pe: float | None
+    price_to_book: float | None
+    # Income
+    dividend_yield: float | None
+    # Profitability
+    profit_margin: float | None
+    return_on_equity: float | None
+    # Growth
+    revenue_growth: float | None
+    # Financial health
+    debt_to_equity: float | None
+    # Scenario-relevant flags
+    is_dividend_payer: bool
+    is_high_growth: bool
+    is_value: bool
+    is_defensive: bool
+    is_cyclical: bool
+    is_rate_sensitive: bool
+    is_inflation_hedge: bool
+    # Historical performance
+    historical_annual_return: float | None
+    # Analyst sentiment
+    analyst_implied_return: float | None
+    analyst_count: int | None
+
+
 __all__ = [
     "TickerPerformance",
     "FundMetadata",
@@ -125,4 +170,5 @@ __all__ = [
     "UserAddedTicker",
     "OAuthTokens",
     "OAuthUserInfo",
+    "EnrichedSecurity",
 ]

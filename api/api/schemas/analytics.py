@@ -112,3 +112,74 @@ class TickerPriceResponse(BaseModel):
     ticker: str
     price_date: date
     price: float
+
+
+# =============================================================================
+# SCENARIO SELECTION SCHEMAS
+# =============================================================================
+
+
+class ScenarioSelectionRequest(BaseModel):
+    """Request schema for scenario-based securities selection."""
+
+    scenario: str
+    """
+    Natural language description of the economic/policy scenario.
+    Examples:
+    - "Rising inflation with Fed rate hikes"
+    - "Tech bubble burst, flight to safety"
+    - "Stagflation environment with high unemployment"
+    - "War in Eastern Europe, energy crisis"
+    - "Strong economic growth, bull market"
+    """
+    num_selections: int = 10
+    """Target number of securities to select (default 10, max 25)."""
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "scenario": "Rising inflation with persistent Fed rate hikes, recession fears growing",
+                    "num_selections": 10,
+                },
+                {
+                    "scenario": "Tech bubble burst, investors flee to safety and value",
+                    "num_selections": 8,
+                },
+            ]
+        }
+    }
+
+
+class SelectedSecurityResponse(BaseModel):
+    """Response schema for a security selected for a scenario."""
+
+    ticker: str
+    display_name: str
+    weight: float
+    """Suggested weight in the portfolio (0-100)."""
+    rationale: str
+    """Why this security fits the scenario."""
+    expected_behavior: str
+    """How it's expected to perform in the scenario."""
+    sector: str | None = None
+    market_cap_category: str | None = None
+    beta: float | None = None
+    dividend_yield: float | None = None
+
+
+class ScenarioSelectionResponse(BaseModel):
+    """Response schema for scenario-based securities selection."""
+
+    scenario_summary: str
+    """LLM's interpretation and summary of the scenario."""
+    selections: list[SelectedSecurityResponse]
+    """List of securities selected for the scenario with weights and rationale."""
+    scenario_risks: list[str]
+    """Risks specific to this scenario-based selection."""
+    diversification_notes: str
+    """Notes on diversification of the selection."""
+    model_used: str
+    """LLM model used for the analysis."""
+    securities_analyzed: int
+    """Number of securities available for selection."""

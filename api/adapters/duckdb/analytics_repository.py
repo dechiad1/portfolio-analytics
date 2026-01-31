@@ -9,6 +9,7 @@ from domain.ports.analytics_repository import (
     TickerPerformance,
     TickerDetails,
     TickerPriceAtDate,
+    EnrichedSecurity,
 )
 from datetime import date
 
@@ -301,3 +302,94 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
             price_date=result[1],
             price=Decimal(str(result[2])),
         )
+
+    def get_enriched_securities(self) -> list[EnrichedSecurity]:
+        """Get all securities with enriched data for scenario-based LLM selection."""
+        query = """
+            SELECT
+                ticker,
+                display_name,
+                asset_type,
+                sector,
+                industry,
+                country,
+                exchange,
+                market_cap,
+                market_cap_category,
+                beta,
+                annualized_volatility,
+                trailing_pe,
+                forward_pe,
+                price_to_book,
+                dividend_yield,
+                profit_margin,
+                return_on_equity,
+                revenue_growth,
+                debt_to_equity,
+                is_dividend_payer,
+                is_high_growth,
+                is_value,
+                is_defensive,
+                is_cyclical,
+                is_rate_sensitive,
+                is_inflation_hedge,
+                historical_annual_return,
+                analyst_implied_return,
+                analyst_count
+            FROM main_marts.dim_security_enriched
+            WHERE ticker IS NOT NULL
+            ORDER BY
+                CASE
+                    WHEN market_cap_category = 'mega' THEN 1
+                    WHEN market_cap_category = 'large' THEN 2
+                    WHEN market_cap_category = 'mid' THEN 3
+                    WHEN market_cap_category = 'small' THEN 4
+                    ELSE 5
+                END,
+                ticker
+        """
+
+        with self._get_connection() as conn:
+            try:
+                result = conn.execute(query).fetchall()
+            except duckdb.CatalogException:
+                # Table doesn't exist yet (dbt hasn't run)
+                return []
+
+        securities = []
+        for row in result:
+            securities.append(
+                EnrichedSecurity(
+                    ticker=row[0],
+                    display_name=row[1] or row[0],
+                    asset_type=row[2] or "EQUITY",
+                    sector=row[3],
+                    industry=row[4],
+                    country=row[5],
+                    exchange=row[6],
+                    market_cap=float(row[7]) if row[7] is not None else None,
+                    market_cap_category=row[8],
+                    beta=float(row[9]) if row[9] is not None else None,
+                    annualized_volatility=float(row[10]) if row[10] is not None else None,
+                    trailing_pe=float(row[11]) if row[11] is not None else None,
+                    forward_pe=float(row[12]) if row[12] is not None else None,
+                    price_to_book=float(row[13]) if row[13] is not None else None,
+                    dividend_yield=float(row[14]) if row[14] is not None else None,
+                    profit_margin=float(row[15]) if row[15] is not None else None,
+                    return_on_equity=float(row[16]) if row[16] is not None else None,
+                    revenue_growth=float(row[17]) if row[17] is not None else None,
+                    debt_to_equity=float(row[18]) if row[18] is not None else None,
+                    is_dividend_payer=bool(row[19]) if row[19] is not None else False,
+                    is_high_growth=bool(row[20]) if row[20] is not None else False,
+                    is_value=bool(row[21]) if row[21] is not None else False,
+                    is_defensive=bool(row[22]) if row[22] is not None else False,
+                    is_cyclical=bool(row[23]) if row[23] is not None else False,
+                    is_rate_sensitive=bool(row[24]) if row[24] is not None else False,
+                    is_inflation_hedge=bool(row[25]) if row[25] is not None else False,
+                    historical_annual_return=float(row[26]) if row[26] is not None else None,
+                    analyst_implied_return=float(row[27]) if row[27] is not None else None,
+                    analyst_count=int(row[28]) if row[28] is not None else None,
+                )
+            )
+
+        return securities

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 
 from domain.commands.compute_analytics import ComputeAnalyticsCommand
 from domain.ports.analytics_repository import AnalyticsRepository
+from domain.services.scenario_selection_service import ScenarioSelectionService
 from api.schemas.analytics import (
     AnalyticsResponse,
     TickerSearchResponse,
@@ -13,9 +14,16 @@ from api.schemas.analytics import (
     SecuritiesListResponse,
     TickerDetailsResponse,
     TickerPriceResponse,
+    ScenarioSelectionRequest,
+    ScenarioSelectionResponse,
+    SelectedSecurityResponse,
 )
 from api.mappers.holding_mapper import HoldingMapper
-from dependencies import get_compute_analytics_command, get_analytics_repository
+from dependencies import (
+    get_compute_analytics_command,
+    get_analytics_repository,
+    get_scenario_selection_service,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -145,4 +153,57 @@ def get_ticker_price(
         ticker=price_info.ticker,
         price_date=price_info.price_date,
         price=float(price_info.price),
+    )
+
+
+@router.post(
+    "/scenario-selection",
+    response_model=ScenarioSelectionResponse,
+    summary="Select securities for an economic scenario",
+)
+def select_securities_for_scenario(
+    request: ScenarioSelectionRequest,
+    service: Annotated[ScenarioSelectionService, Depends(get_scenario_selection_service)],
+) -> ScenarioSelectionResponse:
+    """
+    Use LLM to select securities that would perform well in a given scenario.
+
+    Provide a natural language description of an economic or policy scenario,
+    and the LLM will analyze available securities and select those most likely
+    to perform well if that scenario materializes.
+
+    Example scenarios:
+    - "Rising inflation with Fed rate hikes, recession fears"
+    - "Tech bubble burst, investors flee to safety"
+    - "War in Eastern Europe, energy crisis"
+    - "Strong economic growth, bull market"
+    """
+    # Validate num_selections
+    num_selections = min(max(request.num_selections, 3), 25)
+
+    result = service.select_securities_for_scenario(
+        scenario_description=request.scenario,
+        num_selections=num_selections,
+    )
+
+    return ScenarioSelectionResponse(
+        scenario_summary=result.scenario_summary,
+        selections=[
+            SelectedSecurityResponse(
+                ticker=s.ticker,
+                display_name=s.display_name,
+                weight=float(s.weight),
+                rationale=s.rationale,
+                expected_behavior=s.expected_behavior,
+                sector=s.sector,
+                market_cap_category=s.market_cap_category,
+                beta=s.beta,
+                dividend_yield=s.dividend_yield,
+            )
+            for s in result.selections
+        ],
+        scenario_risks=result.scenario_risks,
+        diversification_notes=result.diversification_notes,
+        model_used=result.model_used,
+        securities_analyzed=result.securities_analyzed,
     )
