@@ -31,41 +31,330 @@ from dependencies import load_config
 # =============================================================================
 
 ETFS = [
-    # (ticker, display_name, sector, exchange)
+    # ==========================================================================
+    # BROAD MARKET
+    # ==========================================================================
     ("SPY", "SPDR S&P 500 ETF Trust", "Broad Market", "NYSE"),
     ("QQQ", "Invesco QQQ Trust", "Technology", "NASDAQ"),
     ("IWM", "iShares Russell 2000 ETF", "Small Cap", "NYSE"),
     ("VTI", "Vanguard Total Stock Market ETF", "Broad Market", "NYSE"),
     ("VOO", "Vanguard S&P 500 ETF", "Broad Market", "NYSE"),
-    ("VEA", "Vanguard FTSE Developed Markets ETF", "International", "NYSE"),
+    ("DIA", "SPDR Dow Jones Industrial Average ETF", "Broad Market", "NYSE"),
+    ("MDY", "SPDR S&P MidCap 400 ETF", "Mid Cap", "NYSE"),
+    ("IJH", "iShares Core S&P Mid-Cap ETF", "Mid Cap", "NYSE"),
+    ("IJR", "iShares Core S&P Small-Cap ETF", "Small Cap", "NYSE"),
+    # ==========================================================================
+    # SECTOR ETFS (Complete SPDR Sector Suite)
+    # ==========================================================================
+    ("XLB", "Materials Select Sector SPDR Fund", "Materials", "NYSE"),
+    ("XLC", "Communication Services Select Sector SPDR", "Communication Services", "NYSE"),
+    ("XLE", "Energy Select Sector SPDR Fund", "Energy", "NYSE"),
+    ("XLF", "Financial Select Sector SPDR Fund", "Financials", "NYSE"),
+    ("XLI", "Industrial Select Sector SPDR Fund", "Industrials", "NYSE"),
+    ("XLK", "Technology Select Sector SPDR Fund", "Technology", "NYSE"),
+    ("XLP", "Consumer Staples Select Sector SPDR Fund", "Consumer Staples", "NYSE"),
+    ("XLRE", "Real Estate Select Sector SPDR Fund", "Real Estate", "NYSE"),
+    ("XLU", "Utilities Select Sector SPDR Fund", "Utilities", "NYSE"),
+    ("XLV", "Health Care Select Sector SPDR Fund", "Healthcare", "NYSE"),
+    ("XLY", "Consumer Discretionary Select Sector SPDR", "Consumer Discretionary", "NYSE"),
+    # ==========================================================================
+    # FACTOR/STYLE ETFS
+    # ==========================================================================
+    ("VTV", "Vanguard Value ETF", "Value", "NYSE"),
+    ("VUG", "Vanguard Growth ETF", "Growth", "NYSE"),
+    ("MTUM", "iShares MSCI USA Momentum Factor ETF", "Momentum", "NYSE"),
+    ("QUAL", "iShares MSCI USA Quality Factor ETF", "Quality", "NYSE"),
+    ("USMV", "iShares MSCI USA Min Vol Factor ETF", "Low Volatility", "NYSE"),
+    ("VLUE", "iShares MSCI USA Value Factor ETF", "Value", "NYSE"),
+    ("SIZE", "iShares MSCI USA Size Factor ETF", "Size", "NYSE"),
+    ("DGRO", "iShares Core Dividend Growth ETF", "Dividend Growth", "NYSE"),
+    ("VIG", "Vanguard Dividend Appreciation ETF", "Dividend Growth", "NYSE"),
+    ("SCHD", "Schwab US Dividend Equity ETF", "Dividend", "NYSE"),
+    ("HDV", "iShares Core High Dividend ETF", "High Dividend", "NYSE"),
+    # ==========================================================================
+    # INTERNATIONAL DEVELOPED
+    # ==========================================================================
+    ("VEA", "Vanguard FTSE Developed Markets ETF", "International Developed", "NYSE"),
+    ("EFA", "iShares MSCI EAFE ETF", "International Developed", "NYSE"),
+    ("IEFA", "iShares Core MSCI EAFE ETF", "International Developed", "NYSE"),
+    ("EWJ", "iShares MSCI Japan ETF", "Japan", "NYSE"),
+    ("EWG", "iShares MSCI Germany ETF", "Germany", "NYSE"),
+    ("EWU", "iShares MSCI United Kingdom ETF", "United Kingdom", "NYSE"),
+    ("EWC", "iShares MSCI Canada ETF", "Canada", "NYSE"),
+    ("EWA", "iShares MSCI Australia ETF", "Australia", "NYSE"),
+    # ==========================================================================
+    # EMERGING MARKETS
+    # ==========================================================================
     ("VWO", "Vanguard FTSE Emerging Markets ETF", "Emerging Markets", "NYSE"),
+    ("EEM", "iShares MSCI Emerging Markets ETF", "Emerging Markets", "NYSE"),
+    ("IEMG", "iShares Core MSCI Emerging Markets ETF", "Emerging Markets", "NYSE"),
+    ("FXI", "iShares China Large-Cap ETF", "China", "NYSE"),
+    ("EWZ", "iShares MSCI Brazil ETF", "Brazil", "NYSE"),
+    ("INDA", "iShares MSCI India ETF", "India", "NYSE"),
+    ("EWT", "iShares MSCI Taiwan ETF", "Taiwan", "NYSE"),
+    ("EWY", "iShares MSCI South Korea ETF", "South Korea", "NYSE"),
+    # ==========================================================================
+    # FIXED INCOME - GOVERNMENT
+    # ==========================================================================
     ("BND", "Vanguard Total Bond Market ETF", "Fixed Income", "NYSE"),
     ("AGG", "iShares Core US Aggregate Bond ETF", "Fixed Income", "NYSE"),
-    ("TLT", "iShares 20+ Year Treasury Bond ETF", "Fixed Income", "NYSE"),
-    ("GLD", "SPDR Gold Shares", "Commodities", "NYSE"),
-    ("XLF", "Financial Select Sector SPDR Fund", "Financials", "NYSE"),
-    ("XLK", "Technology Select Sector SPDR Fund", "Technology", "NYSE"),
-    ("XLE", "Energy Select Sector SPDR Fund", "Energy", "NYSE"),
-    ("XLV", "Health Care Select Sector SPDR Fund", "Healthcare", "NYSE"),
+    ("TLT", "iShares 20+ Year Treasury Bond ETF", "Long-Term Treasury", "NYSE"),
+    ("IEF", "iShares 7-10 Year Treasury Bond ETF", "Intermediate Treasury", "NYSE"),
+    ("SHY", "iShares 1-3 Year Treasury Bond ETF", "Short-Term Treasury", "NYSE"),
+    ("TIP", "iShares TIPS Bond ETF", "Inflation Protected", "NYSE"),
+    ("GOVT", "iShares US Treasury Bond ETF", "Treasury", "NYSE"),
+    # ==========================================================================
+    # FIXED INCOME - CORPORATE & OTHER
+    # ==========================================================================
+    ("LQD", "iShares iBoxx Investment Grade Corp Bond ETF", "Investment Grade Corp", "NYSE"),
+    ("HYG", "iShares iBoxx High Yield Corporate Bond ETF", "High Yield Corp", "NYSE"),
+    ("JNK", "SPDR Bloomberg High Yield Bond ETF", "High Yield Corp", "NYSE"),
+    ("MUB", "iShares National Muni Bond ETF", "Municipal Bonds", "NYSE"),
+    ("EMB", "iShares JP Morgan USD Emerging Markets Bond ETF", "EM Bonds", "NYSE"),
+    ("BNDX", "Vanguard Total International Bond ETF", "International Bonds", "NYSE"),
+    # ==========================================================================
+    # COMMODITIES & ALTERNATIVES
+    # ==========================================================================
+    ("GLD", "SPDR Gold Shares", "Gold", "NYSE"),
+    ("IAU", "iShares Gold Trust", "Gold", "NYSE"),
+    ("SLV", "iShares Silver Trust", "Silver", "NYSE"),
+    ("USO", "United States Oil Fund", "Crude Oil", "NYSE"),
+    ("DBC", "Invesco DB Commodity Index Tracking Fund", "Broad Commodities", "NYSE"),
+    ("GSG", "iShares S&P GSCI Commodity-Indexed Trust", "Broad Commodities", "NYSE"),
+    # ==========================================================================
+    # REAL ESTATE
+    # ==========================================================================
+    ("VNQ", "Vanguard Real Estate ETF", "Real Estate", "NYSE"),
+    ("IYR", "iShares US Real Estate ETF", "Real Estate", "NYSE"),
+    ("VNQI", "Vanguard Global ex-US Real Estate ETF", "International Real Estate", "NYSE"),
+    # ==========================================================================
+    # THEMATIC - TECHNOLOGY & INNOVATION
+    # ==========================================================================
+    ("ARKK", "ARK Innovation ETF", "Innovation", "NYSE"),
+    ("SOXX", "iShares Semiconductor ETF", "Semiconductors", "NYSE"),
+    ("SMH", "VanEck Semiconductor ETF", "Semiconductors", "NYSE"),
+    ("SKYY", "First Trust Cloud Computing ETF", "Cloud Computing", "NYSE"),
+    ("BOTZ", "Global X Robotics & AI ETF", "Robotics & AI", "NYSE"),
+    ("HACK", "ETFMG Prime Cyber Security ETF", "Cybersecurity", "NYSE"),
+    ("FINX", "Global X FinTech ETF", "FinTech", "NYSE"),
+    # ==========================================================================
+    # THEMATIC - CLEAN ENERGY & ESG
+    # ==========================================================================
+    ("ICLN", "iShares Global Clean Energy ETF", "Clean Energy", "NYSE"),
+    ("TAN", "Invesco Solar ETF", "Solar Energy", "NYSE"),
+    ("QCLN", "First Trust NASDAQ Clean Edge Green Energy", "Clean Energy", "NYSE"),
+    ("PBW", "Invesco WilderHill Clean Energy ETF", "Clean Energy", "NYSE"),
+    ("LIT", "Global X Lithium & Battery Tech ETF", "Lithium & Batteries", "NYSE"),
+    # ==========================================================================
+    # THEMATIC - INFRASTRUCTURE & DEFENSE
+    # ==========================================================================
+    ("PAVE", "Global X US Infrastructure Development ETF", "Infrastructure", "NYSE"),
+    ("ITA", "iShares US Aerospace & Defense ETF", "Aerospace & Defense", "NYSE"),
+    ("XAR", "SPDR S&P Aerospace & Defense ETF", "Aerospace & Defense", "NYSE"),
+    # ==========================================================================
+    # THEMATIC - HEALTHCARE & BIOTECH
+    # ==========================================================================
+    ("IBB", "iShares Biotechnology ETF", "Biotechnology", "NYSE"),
+    ("XBI", "SPDR S&P Biotech ETF", "Biotechnology", "NYSE"),
+    ("IHI", "iShares US Medical Devices ETF", "Medical Devices", "NYSE"),
 ]
 
 STOCKS = [
-    # (ticker, display_name, sector, industry, exchange)
+    # ==========================================================================
+    # TECHNOLOGY - MEGA CAP
+    # ==========================================================================
     ("AAPL", "Apple Inc.", "Technology", "Consumer Electronics", "NASDAQ"),
     ("MSFT", "Microsoft Corporation", "Technology", "Software", "NASDAQ"),
-    ("GOOGL", "Alphabet Inc.", "Technology", "Internet Services", "NASDAQ"),
+    ("GOOGL", "Alphabet Inc.", "Communication Services", "Internet Services", "NASDAQ"),
     ("AMZN", "Amazon.com Inc.", "Consumer Discretionary", "E-Commerce", "NASDAQ"),
     ("NVDA", "NVIDIA Corporation", "Technology", "Semiconductors", "NASDAQ"),
-    ("META", "Meta Platforms Inc.", "Technology", "Social Media", "NASDAQ"),
+    ("META", "Meta Platforms Inc.", "Communication Services", "Social Media", "NASDAQ"),
     ("TSLA", "Tesla Inc.", "Consumer Discretionary", "Automobiles", "NASDAQ"),
+    # ==========================================================================
+    # TECHNOLOGY - SEMICONDUCTORS
+    # ==========================================================================
+    ("AMD", "Advanced Micro Devices Inc.", "Technology", "Semiconductors", "NASDAQ"),
+    ("INTC", "Intel Corporation", "Technology", "Semiconductors", "NASDAQ"),
+    ("AVGO", "Broadcom Inc.", "Technology", "Semiconductors", "NASDAQ"),
+    ("QCOM", "Qualcomm Inc.", "Technology", "Semiconductors", "NASDAQ"),
+    ("TXN", "Texas Instruments Inc.", "Technology", "Semiconductors", "NASDAQ"),
+    ("MU", "Micron Technology Inc.", "Technology", "Semiconductors", "NASDAQ"),
+    ("AMAT", "Applied Materials Inc.", "Technology", "Semiconductor Equipment", "NASDAQ"),
+    ("LRCX", "Lam Research Corporation", "Technology", "Semiconductor Equipment", "NASDAQ"),
+    ("ASML", "ASML Holding N.V.", "Technology", "Semiconductor Equipment", "NASDAQ"),
+    # ==========================================================================
+    # TECHNOLOGY - SOFTWARE & CLOUD
+    # ==========================================================================
+    ("CRM", "Salesforce Inc.", "Technology", "Software", "NYSE"),
+    ("ORCL", "Oracle Corporation", "Technology", "Software", "NYSE"),
+    ("ADBE", "Adobe Inc.", "Technology", "Software", "NASDAQ"),
+    ("NOW", "ServiceNow Inc.", "Technology", "Software", "NYSE"),
+    ("INTU", "Intuit Inc.", "Technology", "Software", "NASDAQ"),
+    ("SNOW", "Snowflake Inc.", "Technology", "Cloud Computing", "NYSE"),
+    ("PANW", "Palo Alto Networks Inc.", "Technology", "Cybersecurity", "NASDAQ"),
+    ("CRWD", "CrowdStrike Holdings Inc.", "Technology", "Cybersecurity", "NASDAQ"),
+    # ==========================================================================
+    # FINANCIALS - BANKS
+    # ==========================================================================
     ("JPM", "JPMorgan Chase & Co.", "Financials", "Banking", "NYSE"),
+    ("BAC", "Bank of America Corporation", "Financials", "Banking", "NYSE"),
+    ("WFC", "Wells Fargo & Company", "Financials", "Banking", "NYSE"),
+    ("C", "Citigroup Inc.", "Financials", "Banking", "NYSE"),
+    ("GS", "Goldman Sachs Group Inc.", "Financials", "Investment Banking", "NYSE"),
+    ("MS", "Morgan Stanley", "Financials", "Investment Banking", "NYSE"),
+    ("USB", "U.S. Bancorp", "Financials", "Regional Banking", "NYSE"),
+    ("PNC", "PNC Financial Services Group", "Financials", "Regional Banking", "NYSE"),
+    # ==========================================================================
+    # FINANCIALS - DIVERSIFIED
+    # ==========================================================================
     ("V", "Visa Inc.", "Financials", "Payment Processing", "NYSE"),
+    ("MA", "Mastercard Inc.", "Financials", "Payment Processing", "NYSE"),
+    ("AXP", "American Express Company", "Financials", "Consumer Finance", "NYSE"),
+    ("BLK", "BlackRock Inc.", "Financials", "Asset Management", "NYSE"),
+    ("SCHW", "Charles Schwab Corporation", "Financials", "Brokerage", "NYSE"),
+    ("BRK-B", "Berkshire Hathaway Inc.", "Financials", "Diversified", "NYSE"),
+    # ==========================================================================
+    # FINANCIALS - INSURANCE
+    # ==========================================================================
+    ("PGR", "Progressive Corporation", "Financials", "Insurance", "NYSE"),
+    ("TRV", "Travelers Companies Inc.", "Financials", "Insurance", "NYSE"),
+    ("MET", "MetLife Inc.", "Financials", "Insurance", "NYSE"),
+    ("AIG", "American International Group", "Financials", "Insurance", "NYSE"),
+    # ==========================================================================
+    # HEALTHCARE - PHARMA & BIOTECH
+    # ==========================================================================
     ("JNJ", "Johnson & Johnson", "Healthcare", "Pharmaceuticals", "NYSE"),
+    ("UNH", "UnitedHealth Group Inc.", "Healthcare", "Health Insurance", "NYSE"),
+    ("PFE", "Pfizer Inc.", "Healthcare", "Pharmaceuticals", "NYSE"),
+    ("ABBV", "AbbVie Inc.", "Healthcare", "Pharmaceuticals", "NYSE"),
+    ("MRK", "Merck & Co. Inc.", "Healthcare", "Pharmaceuticals", "NYSE"),
+    ("LLY", "Eli Lilly and Company", "Healthcare", "Pharmaceuticals", "NYSE"),
+    ("BMY", "Bristol-Myers Squibb Company", "Healthcare", "Pharmaceuticals", "NYSE"),
+    ("AMGN", "Amgen Inc.", "Healthcare", "Biotechnology", "NASDAQ"),
+    ("GILD", "Gilead Sciences Inc.", "Healthcare", "Biotechnology", "NASDAQ"),
+    ("REGN", "Regeneron Pharmaceuticals Inc.", "Healthcare", "Biotechnology", "NASDAQ"),
+    ("VRTX", "Vertex Pharmaceuticals Inc.", "Healthcare", "Biotechnology", "NASDAQ"),
+    ("MRNA", "Moderna Inc.", "Healthcare", "Biotechnology", "NASDAQ"),
+    # ==========================================================================
+    # HEALTHCARE - DEVICES & SERVICES
+    # ==========================================================================
+    ("TMO", "Thermo Fisher Scientific Inc.", "Healthcare", "Life Sciences", "NYSE"),
+    ("DHR", "Danaher Corporation", "Healthcare", "Life Sciences", "NYSE"),
+    ("ABT", "Abbott Laboratories", "Healthcare", "Medical Devices", "NYSE"),
+    ("MDT", "Medtronic plc", "Healthcare", "Medical Devices", "NYSE"),
+    ("ISRG", "Intuitive Surgical Inc.", "Healthcare", "Medical Devices", "NASDAQ"),
+    ("CVS", "CVS Health Corporation", "Healthcare", "Healthcare Services", "NYSE"),
+    ("CI", "Cigna Group", "Healthcare", "Health Insurance", "NYSE"),
+    ("ELV", "Elevance Health Inc.", "Healthcare", "Health Insurance", "NYSE"),
+    ("HCA", "HCA Healthcare Inc.", "Healthcare", "Healthcare Facilities", "NYSE"),
+    # ==========================================================================
+    # CONSUMER STAPLES - DEFENSIVE
+    # ==========================================================================
     ("WMT", "Walmart Inc.", "Consumer Staples", "Retail", "NYSE"),
     ("PG", "Procter & Gamble Co.", "Consumer Staples", "Household Products", "NYSE"),
-    ("XOM", "Exxon Mobil Corporation", "Energy", "Oil & Gas", "NYSE"),
-    ("UNH", "UnitedHealth Group Inc.", "Healthcare", "Health Insurance", "NYSE"),
+    ("KO", "Coca-Cola Company", "Consumer Staples", "Beverages", "NYSE"),
+    ("PEP", "PepsiCo Inc.", "Consumer Staples", "Beverages", "NASDAQ"),
+    ("COST", "Costco Wholesale Corporation", "Consumer Staples", "Retail", "NASDAQ"),
+    ("PM", "Philip Morris International", "Consumer Staples", "Tobacco", "NYSE"),
+    ("MO", "Altria Group Inc.", "Consumer Staples", "Tobacco", "NYSE"),
+    ("CL", "Colgate-Palmolive Company", "Consumer Staples", "Household Products", "NYSE"),
+    ("KMB", "Kimberly-Clark Corporation", "Consumer Staples", "Household Products", "NYSE"),
+    ("GIS", "General Mills Inc.", "Consumer Staples", "Food Products", "NYSE"),
+    ("K", "Kellanova", "Consumer Staples", "Food Products", "NYSE"),
+    ("KHC", "Kraft Heinz Company", "Consumer Staples", "Food Products", "NASDAQ"),
+    ("MDLZ", "Mondelez International Inc.", "Consumer Staples", "Food Products", "NASDAQ"),
+    ("STZ", "Constellation Brands Inc.", "Consumer Staples", "Alcoholic Beverages", "NYSE"),
+    # ==========================================================================
+    # CONSUMER DISCRETIONARY - CYCLICAL
+    # ==========================================================================
     ("HD", "The Home Depot Inc.", "Consumer Discretionary", "Home Improvement", "NYSE"),
+    ("LOW", "Lowe's Companies Inc.", "Consumer Discretionary", "Home Improvement", "NYSE"),
+    ("MCD", "McDonald's Corporation", "Consumer Discretionary", "Restaurants", "NYSE"),
+    ("SBUX", "Starbucks Corporation", "Consumer Discretionary", "Restaurants", "NASDAQ"),
+    ("NKE", "Nike Inc.", "Consumer Discretionary", "Apparel", "NYSE"),
+    ("TGT", "Target Corporation", "Consumer Discretionary", "Retail", "NYSE"),
+    ("TJX", "TJX Companies Inc.", "Consumer Discretionary", "Retail", "NYSE"),
+    ("BKNG", "Booking Holdings Inc.", "Consumer Discretionary", "Travel", "NASDAQ"),
+    ("MAR", "Marriott International Inc.", "Consumer Discretionary", "Hotels", "NASDAQ"),
+    ("DIS", "Walt Disney Company", "Communication Services", "Entertainment", "NYSE"),
+    ("NFLX", "Netflix Inc.", "Communication Services", "Streaming", "NASDAQ"),
+    ("F", "Ford Motor Company", "Consumer Discretionary", "Automobiles", "NYSE"),
+    ("GM", "General Motors Company", "Consumer Discretionary", "Automobiles", "NYSE"),
+    # ==========================================================================
+    # ENERGY - OIL & GAS
+    # ==========================================================================
+    ("XOM", "Exxon Mobil Corporation", "Energy", "Oil & Gas Integrated", "NYSE"),
+    ("CVX", "Chevron Corporation", "Energy", "Oil & Gas Integrated", "NYSE"),
+    ("COP", "ConocoPhillips", "Energy", "Oil & Gas E&P", "NYSE"),
+    ("EOG", "EOG Resources Inc.", "Energy", "Oil & Gas E&P", "NYSE"),
+    ("SLB", "Schlumberger Limited", "Energy", "Oil Services", "NYSE"),
+    ("OXY", "Occidental Petroleum Corporation", "Energy", "Oil & Gas E&P", "NYSE"),
+    ("MPC", "Marathon Petroleum Corporation", "Energy", "Oil Refining", "NYSE"),
+    ("PSX", "Phillips 66", "Energy", "Oil Refining", "NYSE"),
+    ("VLO", "Valero Energy Corporation", "Energy", "Oil Refining", "NYSE"),
+    ("HAL", "Halliburton Company", "Energy", "Oil Services", "NYSE"),
+    # ==========================================================================
+    # INDUSTRIALS - DIVERSIFIED
+    # ==========================================================================
+    ("CAT", "Caterpillar Inc.", "Industrials", "Machinery", "NYSE"),
+    ("DE", "Deere & Company", "Industrials", "Machinery", "NYSE"),
+    ("HON", "Honeywell International Inc.", "Industrials", "Diversified", "NASDAQ"),
+    ("UNP", "Union Pacific Corporation", "Industrials", "Railroads", "NYSE"),
+    ("UPS", "United Parcel Service Inc.", "Industrials", "Logistics", "NYSE"),
+    ("FDX", "FedEx Corporation", "Industrials", "Logistics", "NYSE"),
+    ("BA", "Boeing Company", "Industrials", "Aerospace", "NYSE"),
+    ("RTX", "RTX Corporation", "Industrials", "Aerospace & Defense", "NYSE"),
+    ("LMT", "Lockheed Martin Corporation", "Industrials", "Aerospace & Defense", "NYSE"),
+    ("NOC", "Northrop Grumman Corporation", "Industrials", "Aerospace & Defense", "NYSE"),
+    ("GD", "General Dynamics Corporation", "Industrials", "Aerospace & Defense", "NYSE"),
+    ("GE", "GE Aerospace", "Industrials", "Aerospace", "NYSE"),
+    ("MMM", "3M Company", "Industrials", "Diversified", "NYSE"),
+    ("EMR", "Emerson Electric Co.", "Industrials", "Electrical Equipment", "NYSE"),
+    ("ETN", "Eaton Corporation", "Industrials", "Electrical Equipment", "NYSE"),
+    ("WM", "Waste Management Inc.", "Industrials", "Waste Management", "NYSE"),
+    # ==========================================================================
+    # MATERIALS
+    # ==========================================================================
+    ("LIN", "Linde plc", "Materials", "Industrial Gases", "NYSE"),
+    ("APD", "Air Products and Chemicals", "Materials", "Industrial Gases", "NYSE"),
+    ("SHW", "Sherwin-Williams Company", "Materials", "Specialty Chemicals", "NYSE"),
+    ("FCX", "Freeport-McMoRan Inc.", "Materials", "Copper Mining", "NYSE"),
+    ("NEM", "Newmont Corporation", "Materials", "Gold Mining", "NYSE"),
+    ("NUE", "Nucor Corporation", "Materials", "Steel", "NYSE"),
+    ("DD", "DuPont de Nemours Inc.", "Materials", "Specialty Chemicals", "NYSE"),
+    ("DOW", "Dow Inc.", "Materials", "Chemicals", "NYSE"),
+    # ==========================================================================
+    # UTILITIES - DEFENSIVE / RATE SENSITIVE
+    # ==========================================================================
+    ("NEE", "NextEra Energy Inc.", "Utilities", "Electric Utilities", "NYSE"),
+    ("DUK", "Duke Energy Corporation", "Utilities", "Electric Utilities", "NYSE"),
+    ("SO", "Southern Company", "Utilities", "Electric Utilities", "NYSE"),
+    ("D", "Dominion Energy Inc.", "Utilities", "Electric Utilities", "NYSE"),
+    ("AEP", "American Electric Power", "Utilities", "Electric Utilities", "NASDAQ"),
+    ("EXC", "Exelon Corporation", "Utilities", "Electric Utilities", "NASDAQ"),
+    ("SRE", "Sempra", "Utilities", "Multi-Utilities", "NYSE"),
+    ("XEL", "Xcel Energy Inc.", "Utilities", "Electric Utilities", "NASDAQ"),
+    # ==========================================================================
+    # REAL ESTATE - RATE SENSITIVE
+    # ==========================================================================
+    ("PLD", "Prologis Inc.", "Real Estate", "Industrial REIT", "NYSE"),
+    ("AMT", "American Tower Corporation", "Real Estate", "Tower REIT", "NYSE"),
+    ("CCI", "Crown Castle Inc.", "Real Estate", "Tower REIT", "NYSE"),
+    ("EQIX", "Equinix Inc.", "Real Estate", "Data Center REIT", "NASDAQ"),
+    ("SPG", "Simon Property Group", "Real Estate", "Retail REIT", "NYSE"),
+    ("O", "Realty Income Corporation", "Real Estate", "Net Lease REIT", "NYSE"),
+    ("PSA", "Public Storage", "Real Estate", "Self-Storage REIT", "NYSE"),
+    ("WELL", "Welltower Inc.", "Real Estate", "Healthcare REIT", "NYSE"),
+    ("AVB", "AvalonBay Communities Inc.", "Real Estate", "Residential REIT", "NYSE"),
+    ("DLR", "Digital Realty Trust Inc.", "Real Estate", "Data Center REIT", "NYSE"),
+    # ==========================================================================
+    # COMMUNICATION SERVICES
+    # ==========================================================================
+    ("T", "AT&T Inc.", "Communication Services", "Telecom", "NYSE"),
+    ("VZ", "Verizon Communications Inc.", "Communication Services", "Telecom", "NYSE"),
+    ("TMUS", "T-Mobile US Inc.", "Communication Services", "Telecom", "NASDAQ"),
+    ("CMCSA", "Comcast Corporation", "Communication Services", "Cable", "NASDAQ"),
+    ("CHTR", "Charter Communications Inc.", "Communication Services", "Cable", "NASDAQ"),
 ]
 
 # Sample Treasury bonds for learning

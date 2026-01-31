@@ -96,6 +96,64 @@ sources:
           - name: fetched_at
             description: Timestamp when data was fetched
 
+      - name: raw_security_characteristics
+        description: Security fundamental characteristics for scenario-based LLM selection
+        columns:
+          - name: ticker
+            description: Stock/fund ticker symbol
+          - name: fetched_at
+            description: Timestamp when data was fetched
+          - name: security_name
+            description: Security display name
+          - name: quote_type
+            description: Security type (EQUITY, ETF, etc.)
+          - name: sector
+            description: GICS sector classification
+          - name: industry
+            description: Industry classification
+          - name: country
+            description: Country of domicile
+          - name: exchange
+            description: Exchange where security trades
+          - name: currency
+            description: Trading currency
+          - name: market_cap
+            description: Market capitalization in USD
+          - name: beta
+            description: Beta vs market (5-year monthly)
+          - name: trailing_pe
+            description: Trailing P/E ratio
+          - name: forward_pe
+            description: Forward P/E ratio
+          - name: price_to_book
+            description: Price to book ratio
+          - name: dividend_yield
+            description: Trailing dividend yield
+          - name: profit_margin
+            description: Net profit margin
+          - name: return_on_equity
+            description: Return on equity
+          - name: debt_to_equity
+            description: Debt to equity ratio
+          - name: revenue_growth
+            description: Year-over-year revenue growth
+          - name: market_cap_category
+            description: Size classification (mega, large, mid, small, micro)
+          - name: is_dividend_payer
+            description: Whether security pays dividends
+          - name: is_high_growth
+            description: Whether security has high growth characteristics
+          - name: is_value
+            description: Whether security has value characteristics
+          - name: is_defensive
+            description: Whether security is in a defensive sector
+          - name: is_cyclical
+            description: Whether security is in a cyclical sector
+          - name: is_rate_sensitive
+            description: Whether security is sensitive to interest rates
+          - name: is_inflation_hedge
+            description: Whether security is traditionally an inflation hedge
+
   # =============================================================================
   # POSTGRES REPLICATED DATA (transactional system of record)
   # =============================================================================
