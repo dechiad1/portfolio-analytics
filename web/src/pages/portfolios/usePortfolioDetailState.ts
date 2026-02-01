@@ -5,6 +5,7 @@ import type {
   PortfolioHolding,
   PortfolioHoldingInput,
   RiskAnalysisResult,
+  RiskAnalysisListItem,
 } from '../../shared/types';
 import { ApiClientError } from '../../shared/api/client';
 import {
@@ -15,6 +16,9 @@ import {
   updatePortfolioHolding,
   deletePortfolioHolding,
   generateRiskAnalysis,
+  listRiskAnalyses,
+  getRiskAnalysis,
+  deleteRiskAnalysis,
 } from './portfolioApi';
 
 /**
@@ -27,8 +31,10 @@ interface PortfolioDetailState {
   summary: PortfolioSummary | null;
   /** Portfolio holdings */
   holdings: PortfolioHolding[];
-  /** Risk analysis result */
+  /** Current risk analysis result */
   riskAnalysis: RiskAnalysisResult | null;
+  /** List of historical risk analyses */
+  riskAnalysisList: RiskAnalysisListItem[];
   /** Loading state for initial fetch */
   isLoading: boolean;
   /** Error message from last operation */
@@ -37,6 +43,8 @@ interface PortfolioDetailState {
   isMutating: boolean;
   /** Whether risk analysis is being generated */
   isGeneratingRiskAnalysis: boolean;
+  /** Whether switching between analyses */
+  isLoadingAnalysis: boolean;
   /** Refetch all data */
   refetch: () => Promise<void>;
   /** Add a new holding */
@@ -47,6 +55,10 @@ interface PortfolioDetailState {
   removeHolding: (holdingId: string) => Promise<boolean>;
   /** Generate risk analysis */
   runRiskAnalysis: () => Promise<boolean>;
+  /** Select a specific analysis from history */
+  selectAnalysis: (analysisId: string) => Promise<boolean>;
+  /** Delete an analysis from history */
+  removeAnalysis: (analysisId: string) => Promise<boolean>;
   /** Clear current error */
   clearError: () => void;
 }
@@ -59,10 +71,12 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
   const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisResult | null>(null);
+  const [riskAnalysisList, setRiskAnalysisList] = useState<RiskAnalysisListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const [isGeneratingRiskAnalysis, setIsGeneratingRiskAnalysis] = useState(false);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
 
   const loadPortfolioData = useCallback(async () => {
     setIsLoading(true);
@@ -74,13 +88,25 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
       setPortfolio(portfolioData);
 
       // Then fetch related data in parallel
-      const [summaryData, holdingsData] = await Promise.all([
+      const [summaryData, holdingsData, analysesData] = await Promise.all([
         getPortfolioSummary(portfolioId).catch(() => null),
         fetchPortfolioHoldings(portfolioId).catch(() => []),
+        listRiskAnalyses(portfolioId).catch(() => []),
       ]);
 
       setSummary(summaryData);
       setHoldings(holdingsData);
+      setRiskAnalysisList(analysesData);
+
+      // Load the latest analysis if available
+      if (analysesData.length > 0) {
+        try {
+          const latestAnalysis = await getRiskAnalysis(portfolioId, analysesData[0].id);
+          setRiskAnalysis(latestAnalysis);
+        } catch {
+          // Silently fail - analysis data is not critical
+        }
+      }
     } catch (err) {
       if (err instanceof ApiClientError) {
         if (err.status === 403) {
@@ -193,6 +219,16 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
     try {
       const result = await generateRiskAnalysis(portfolioId);
       setRiskAnalysis(result);
+      // Add to list at the beginning (most recent first)
+      setRiskAnalysisList((prev) => [
+        {
+          id: result.id,
+          created_at: result.created_at,
+          model_used: result.model_used,
+          risk_count: result.risks.length,
+        },
+        ...prev,
+      ]);
       return true;
     } catch (err) {
       const message =
@@ -204,6 +240,57 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
     }
   }, [portfolioId]);
 
+  const selectAnalysis = useCallback(
+    async (analysisId: string): Promise<boolean> => {
+      // Check if already selected
+      if (riskAnalysis?.id === analysisId) {
+        return true;
+      }
+
+      setIsLoadingAnalysis(true);
+      setError(null);
+
+      try {
+        const result = await getRiskAnalysis(portfolioId, analysisId);
+        setRiskAnalysis(result);
+        return true;
+      } catch (err) {
+        const message =
+          err instanceof ApiClientError ? err.detail : 'Failed to load risk analysis';
+        setError(message);
+        return false;
+      } finally {
+        setIsLoadingAnalysis(false);
+      }
+    },
+    [portfolioId, riskAnalysis?.id]
+  );
+
+  const removeAnalysis = useCallback(
+    async (analysisId: string): Promise<boolean> => {
+      setIsMutating(true);
+      setError(null);
+
+      try {
+        await deleteRiskAnalysis(portfolioId, analysisId);
+        setRiskAnalysisList((prev) => prev.filter((a) => a.id !== analysisId));
+        // Clear current analysis if it was deleted
+        if (riskAnalysis?.id === analysisId) {
+          setRiskAnalysis(null);
+        }
+        return true;
+      } catch (err) {
+        const message =
+          err instanceof ApiClientError ? err.detail : 'Failed to delete risk analysis';
+        setError(message);
+        return false;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [portfolioId, riskAnalysis?.id]
+  );
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -213,15 +300,19 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
     summary,
     holdings,
     riskAnalysis,
+    riskAnalysisList,
     isLoading,
     error,
     isMutating,
     isGeneratingRiskAnalysis,
+    isLoadingAnalysis,
     refetch,
     addHolding,
     editHolding,
     removeHolding,
     runRiskAnalysis,
+    selectAnalysis,
+    removeAnalysis,
     clearError,
   };
 }

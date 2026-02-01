@@ -7,6 +7,7 @@ import type {
   PortfolioHoldingInput,
   PortfolioSummary,
   RiskAnalysisResult,
+  RiskAnalysisListItem,
   CreatePortfolioResult,
 } from '../../shared/types';
 
@@ -113,4 +114,36 @@ export async function deletePortfolioHolding(
  */
 export async function generateRiskAnalysis(portfolioId: string): Promise<RiskAnalysisResult> {
   return api.post<RiskAnalysisResult>(`/portfolios/${portfolioId}/risk-analysis`);
+}
+
+/**
+ * List all risk analyses for a portfolio.
+ */
+export async function listRiskAnalyses(portfolioId: string): Promise<RiskAnalysisListItem[]> {
+  const response = await api.get<{ analyses: RiskAnalysisListItem[] }>(
+    `/portfolios/${portfolioId}/risk-analyses`
+  );
+  return response.analyses;
+}
+
+/**
+ * Get a specific risk analysis by ID.
+ */
+export async function getRiskAnalysis(
+  portfolioId: string,
+  analysisId: string
+): Promise<RiskAnalysisResult> {
+  return api.get<RiskAnalysisResult>(
+    `/portfolios/${portfolioId}/risk-analyses/${analysisId}`
+  );
+}
+
+/**
+ * Delete a risk analysis.
+ */
+export async function deleteRiskAnalysis(
+  portfolioId: string,
+  analysisId: string
+): Promise<void> {
+  return api.delete(`/portfolios/${portfolioId}/risk-analyses/${analysisId}`);
 }

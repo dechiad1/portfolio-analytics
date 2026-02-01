@@ -24,15 +24,19 @@ export function PortfolioDetailPage() {
     summary,
     holdings,
     riskAnalysis,
+    riskAnalysisList,
     isLoading,
     error,
     isMutating,
     isGeneratingRiskAnalysis,
+    isLoadingAnalysis,
     refetch,
     addHolding,
     editHolding,
     removeHolding,
     runRiskAnalysis,
+    selectAnalysis,
+    removeAnalysis,
     clearError,
   } = usePortfolioDetailState(portfolioId!);
 
@@ -174,8 +178,12 @@ export function PortfolioDetailPage() {
       <section className={styles.section}>
         <RiskAnalysisSection
           riskAnalysis={riskAnalysis}
+          riskAnalysisList={riskAnalysisList}
           isGenerating={isGeneratingRiskAnalysis}
+          isLoadingAnalysis={isLoadingAnalysis}
           onGenerate={runRiskAnalysis}
+          onSelectAnalysis={selectAnalysis}
+          onDeleteAnalysis={removeAnalysis}
           hasHoldings={holdings.length > 0}
         />
       </section>
