@@ -24,6 +24,8 @@ export const riskAnalysisKeys = {
 export function useRiskAnalysisQueries(portfolioId: string) {
   const queryClient = useQueryClient();
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
+  // Track if selection was explicitly cleared to prevent auto-select race condition
+  const [selectionCleared, setSelectionCleared] = useState(false);
 
   // Query: List all risk analyses
   const listQuery = useQuery({
@@ -31,12 +33,12 @@ export function useRiskAnalysisQueries(portfolioId: string) {
     queryFn: () => listRiskAnalyses(portfolioId),
   });
 
-  // Auto-select the first analysis when list loads
+  // Auto-select the first analysis when list loads (only if not explicitly cleared)
   useEffect(() => {
-    if (listQuery.data && listQuery.data.length > 0 && !selectedAnalysisId) {
+    if (listQuery.data && listQuery.data.length > 0 && !selectedAnalysisId && !selectionCleared) {
       setSelectedAnalysisId(listQuery.data[0].id);
     }
-  }, [listQuery.data, selectedAnalysisId]);
+  }, [listQuery.data, selectedAnalysisId, selectionCleared]);
 
   // Query: Get selected analysis (enabled when an analysis is selected)
   const detailQuery = useQuery({
@@ -58,8 +60,9 @@ export function useRiskAnalysisQueries(portfolioId: string) {
         riskAnalysisKeys.detail(portfolioId, newAnalysis.id),
         newAnalysis
       );
-      // Select the new analysis
+      // Select the new analysis and reset cleared flag
       setSelectedAnalysisId(newAnalysis.id);
+      setSelectionCleared(false);
     },
   });
 
@@ -80,7 +83,13 @@ export function useRiskAnalysisQueries(portfolioId: string) {
 
       // If we deleted the currently selected analysis, select the next one
       if (selectedAnalysisId === deletedId) {
-        setSelectedAnalysisId(remaining.length > 0 ? remaining[0].id : null);
+        if (remaining.length > 0) {
+          setSelectedAnalysisId(remaining[0].id);
+          setSelectionCleared(false);
+        } else {
+          setSelectedAnalysisId(null);
+          setSelectionCleared(true);
+        }
       }
 
       // Remove the deleted analysis from cache
@@ -92,6 +101,10 @@ export function useRiskAnalysisQueries(portfolioId: string) {
 
   const selectAnalysis = useCallback((analysisId: string | null) => {
     setSelectedAnalysisId(analysisId);
+    // Reset cleared flag when explicitly selecting an analysis
+    if (analysisId !== null) {
+      setSelectionCleared(false);
+    }
   }, []);
 
   // Generate wrapper that returns a boolean for compatibility

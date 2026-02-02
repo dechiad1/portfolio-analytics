@@ -8,6 +8,7 @@ import {
 import { ApiClientError } from '../api/client';
 import { getCurrentUser, logout as apiLogout } from '../api/authApi';
 import { AuthContext } from './authContextDef';
+import type { User } from '../types';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -17,7 +18,7 @@ interface AuthProviderProps {
  * AuthProvider manages OAuth authentication state via session cookies.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<ReturnType<typeof getCurrentUser> extends Promise<infer T> ? T | null : never>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {

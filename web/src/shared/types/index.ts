@@ -244,13 +244,6 @@ export interface RiskAnalysisListItem {
 }
 
 /**
- * Response from list risk analyses endpoint.
- */
-export interface RiskAnalysisListResponse {
-  analyses: RiskAnalysisListItem[];
-}
-
-/**
  * Available asset types for holdings (display values).
  */
 export const ASSET_TYPES = [
