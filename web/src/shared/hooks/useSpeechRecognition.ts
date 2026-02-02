@@ -71,6 +71,8 @@ declare global {
   }
 }
 
+const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+
 export function useSpeechRecognition({
   onResult,
   onError,
@@ -84,8 +86,6 @@ export function useSpeechRecognition({
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
   const isSupported =
     typeof window !== 'undefined' &&

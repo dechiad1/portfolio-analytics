@@ -1,10 +1,15 @@
-import type { RiskAnalysisResult, RiskItem } from '../../../shared/types';
+import type { RiskAnalysisResult, RiskAnalysisListItem, RiskItem } from '../../../shared/types';
 import styles from './RiskAnalysisSection.module.css';
 
 interface RiskAnalysisSectionProps {
   riskAnalysis: RiskAnalysisResult | null;
+  riskAnalysisList: RiskAnalysisListItem[];
   isGenerating: boolean;
+  isLoadingAnalysis: boolean;
+  isDeletingAnalysis: boolean;
   onGenerate: () => Promise<boolean>;
+  onSelectAnalysis: (analysisId: string | null) => void;
+  onDeleteAnalysis: (analysisId: string) => Promise<boolean>;
   hasHoldings: boolean;
 }
 
@@ -60,15 +65,43 @@ function RiskCard({ risk }: { risk: RiskItem }) {
   );
 }
 
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 /**
  * RiskAnalysisSection displays AI-generated risk analysis.
  */
 export function RiskAnalysisSection({
   riskAnalysis,
+  riskAnalysisList,
   isGenerating,
+  isLoadingAnalysis,
+  isDeletingAnalysis,
   onGenerate,
+  onSelectAnalysis,
+  onDeleteAnalysis,
   hasHoldings,
 }: RiskAnalysisSectionProps) {
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const analysisId = e.target.value;
+    if (analysisId) {
+      onSelectAnalysis(analysisId);
+    }
+  };
+
+  const handleDelete = () => {
+    if (riskAnalysis && window.confirm('Delete this analysis?')) {
+      onDeleteAnalysis(riskAnalysis.id);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -78,38 +111,55 @@ export function RiskAnalysisSection({
             Generate an AI-powered analysis of your portfolio's risk profile
           </p>
         </div>
-        <button
-          className={styles.generateButton}
-          onClick={onGenerate}
-          disabled={isGenerating || !hasHoldings}
-          title={!hasHoldings ? 'Add holdings to generate risk analysis' : undefined}
-        >
-          {isGenerating ? (
-            <>
-              <span className={styles.spinner} />
-              Analyzing...
-            </>
-          ) : (
-            <>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              {riskAnalysis ? 'Regenerate Analysis' : 'Generate Analysis'}
-            </>
+        <div className={styles.headerActions}>
+          {riskAnalysisList.length > 0 && (
+            <select
+              className={styles.historySelect}
+              value={riskAnalysis?.id || ''}
+              onChange={handleSelectChange}
+              disabled={isGenerating || isLoadingAnalysis || isDeletingAnalysis}
+              aria-label="Select risk analysis"
+            >
+              {riskAnalysisList.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {formatDate(item.created_at)} ({item.risk_count} risks)
+                </option>
+              ))}
+            </select>
           )}
-        </button>
+          <button
+            className={styles.generateButton}
+            onClick={onGenerate}
+            disabled={isGenerating || !hasHoldings}
+            title={!hasHoldings ? 'Add holdings to generate risk analysis' : undefined}
+          >
+            {isGenerating ? (
+              <>
+                <span className={styles.spinner} />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                {riskAnalysis ? 'New Analysis' : 'Generate Analysis'}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {!hasHoldings && (
@@ -173,7 +223,14 @@ export function RiskAnalysisSection({
         </div>
       )}
 
-      {riskAnalysis && !isGenerating && (
+      {isLoadingAnalysis && (
+        <div className={styles.loading}>
+          <div className={styles.loadingSpinner} />
+          <p className={styles.loadingText}>Loading analysis...</p>
+        </div>
+      )}
+
+      {riskAnalysis && !isGenerating && !isLoadingAnalysis && (
         <div className={styles.result}>
           {riskAnalysis.macro_climate_summary && (
             <div className={styles.macroSummary}>
@@ -186,10 +243,35 @@ export function RiskAnalysisSection({
               <RiskCard key={index} risk={risk} />
             ))}
           </div>
-          <p className={styles.timestamp}>
-            Generated on {new Date(riskAnalysis.analysis_timestamp).toLocaleString()}
-          </p>
-          <p className={styles.modelInfo}>Model: {riskAnalysis.model_used}</p>
+          <div className={styles.footer}>
+            <div className={styles.footerInfo}>
+              <p className={styles.timestamp}>
+                Generated on {new Date(riskAnalysis.created_at).toLocaleString()}
+              </p>
+              <p className={styles.modelInfo}>Model: {riskAnalysis.model_used}</p>
+            </div>
+            <button
+              className={styles.deleteButton}
+              onClick={handleDelete}
+              title="Delete this analysis"
+              aria-label="Delete analysis"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

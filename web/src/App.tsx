@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './shared/contexts/AuthContext';
 import { Layout } from './shared/components/Layout';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
@@ -9,13 +10,23 @@ import { PortfolioDetailPage } from './pages/portfolios/PortfolioDetailPage';
 import { SecuritiesPage } from './pages/securities/SecuritiesPage';
 import { SimulationDetailPage } from './pages/simulations/SimulationDetailPage';
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+    },
+  },
+});
+
 /**
  * App is the root component that sets up routing and auth context.
  */
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -40,8 +51,9 @@ function App() {
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/portfolios" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

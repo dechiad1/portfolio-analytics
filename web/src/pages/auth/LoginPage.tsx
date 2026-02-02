@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../shared/contexts/AuthContext';
+import { useAuth } from '../../shared/hooks/useAuth';
 import { getOAuthLoginUrl } from '../../shared/api/authApi';
 import styles from './AuthPage.module.css';
 

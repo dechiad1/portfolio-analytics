@@ -226,10 +226,21 @@ export interface RiskItem {
  * RiskAnalysisResult contains AI-generated risk analysis.
  */
 export interface RiskAnalysisResult {
+  id: string;
   risks: RiskItem[];
   macro_climate_summary: string;
-  analysis_timestamp: string;
+  created_at: string;
   model_used: string;
+}
+
+/**
+ * Summary item for risk analysis list.
+ */
+export interface RiskAnalysisListItem {
+  id: string;
+  created_at: string;
+  model_used: string;
+  risk_count: number;
 }
 
 /**

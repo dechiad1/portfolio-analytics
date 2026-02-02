@@ -283,6 +283,12 @@ tasks:
     cmds:
       - npm run test
 
+  lint:fe:
+    desc: Run frontend linting
+    dir: web
+    cmds:
+      - npm run lint
+
   test:dbt:
     desc: Run DBT tests
     dir: portfolio_analytics/dbt

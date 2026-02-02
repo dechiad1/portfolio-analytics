@@ -199,4 +199,85 @@ test.describe('Portfolio Management', () => {
     // The ticker should now be VFIAX
     await expect(tickerInput).toHaveValue('VFIAX');
   });
+
+  test('should generate, view history, switch between, and delete risk analyses', async ({ page }) => {
+    // Login with a fresh user for this test
+    const riskTestUser = {
+      email: `e2e-risk-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`,
+    };
+
+    await oauthLogin(page, riskTestUser.email);
+    await expect(page).toHaveURL('/portfolios', { timeout: 10000 });
+
+    // Create a portfolio first
+    await page.getByRole('button', { name: 'New Portfolio' }).click();
+    await page.getByRole('textbox', { name: 'Name' }).fill('Risk Analysis Test Portfolio');
+    await page.getByRole('dialog').getByRole('button', { name: 'Create Portfolio' }).click();
+
+    // Wait for portfolio card to appear (indicating creation success and modal close)
+    const portfolioCard = page.locator('a').filter({ hasText: 'Risk Analysis Test Portfolio' });
+    await expect(portfolioCard).toBeVisible({ timeout: 15000 });
+
+    // Navigate to the portfolio detail page
+    await portfolioCard.click();
+    await expect(page.getByRole('heading', { name: 'Risk Analysis Test Portfolio', level: 1 })).toBeVisible({ timeout: 10000 });
+
+    // Add a holding first (required for risk analysis)
+    await page.getByRole('button', { name: 'Add Holding' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+
+    await page.locator('#ticker').fill('AAPL');
+    await page.locator('#name').fill('Apple Inc.');
+    await page.locator('#assetType').selectOption('Stock');
+    await page.locator('#assetClass').selectOption('U.S. Stocks');
+    await page.locator('#sector').selectOption('Technology');
+    await page.locator('#broker').selectOption('Fidelity');
+    await page.locator('#quantity').fill('10');
+    await page.locator('#purchaseDate').fill('2024-01-15');
+    await page.locator('#purchasePrice').fill('185.00');
+    await page.locator('#currentPrice').fill('195.00');
+    await page.getByRole('dialog').getByRole('button', { name: 'Add Holding' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
+
+    // Scroll to risk analysis section
+    const riskSection = page.locator('text=AI Risk Analysis').first();
+    await riskSection.scrollIntoViewIfNeeded();
+
+    // Check no history dropdown initially (no analyses exist yet)
+    const historyDropdown = page.getByLabel('Select risk analysis');
+    await expect(historyDropdown).not.toBeVisible();
+
+    // Click generate analysis button
+    await page.getByRole('button', { name: 'Generate Analysis' }).click();
+
+    // Wait for analysis to be generated (indicated by results appearing)
+    // Note: In mock/test environment, LLM returns immediately with fallback
+    await expect(page.getByText(/Generated on/)).toBeVisible({ timeout: 30000 });
+
+    // Now history dropdown should appear with one item
+    await expect(historyDropdown).toBeVisible({ timeout: 5000 });
+
+    // Generate a second analysis
+    await page.getByRole('button', { name: 'New Analysis' }).click();
+    await expect(page.getByText(/Generated on/)).toBeVisible({ timeout: 30000 });
+
+    // History dropdown should now have multiple options
+    const options = await historyDropdown.locator('option').count();
+    expect(options).toBeGreaterThanOrEqual(2);
+
+    // Get current option count before delete
+    const optionCountBefore = await historyDropdown.locator('option').count();
+
+    // Set up dialog handler before clicking delete
+    page.once('dialog', dialog => dialog.accept());
+
+    // Delete the current analysis
+    await page.getByRole('button', { name: 'Delete analysis' }).click();
+
+    // Wait for the option count to decrease (deterministic wait instead of timeout)
+    await expect(historyDropdown.locator('option')).toHaveCount(optionCountBefore - 1, { timeout: 5000 });
+
+    // After deletion, verify the history dropdown still exists (one analysis remains)
+    await expect(historyDropdown).toBeVisible({ timeout: 5000 });
+  });
 });

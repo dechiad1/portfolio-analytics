@@ -5,6 +5,7 @@ import type {
   PortfolioHolding,
   PortfolioHoldingInput,
   RiskAnalysisResult,
+  RiskAnalysisListItem,
 } from '../../shared/types';
 import { ApiClientError } from '../../shared/api/client';
 import {
@@ -14,8 +15,8 @@ import {
   addPortfolioHolding,
   updatePortfolioHolding,
   deletePortfolioHolding,
-  generateRiskAnalysis,
 } from './portfolioApi';
+import { useRiskAnalysisQueries } from './useRiskAnalysisQueries';
 
 /**
  * State and operations for portfolio detail page.
@@ -27,16 +28,12 @@ interface PortfolioDetailState {
   summary: PortfolioSummary | null;
   /** Portfolio holdings */
   holdings: PortfolioHolding[];
-  /** Risk analysis result */
-  riskAnalysis: RiskAnalysisResult | null;
   /** Loading state for initial fetch */
   isLoading: boolean;
   /** Error message from last operation */
   error: string | null;
   /** Whether a mutation is in progress */
   isMutating: boolean;
-  /** Whether risk analysis is being generated */
-  isGeneratingRiskAnalysis: boolean;
   /** Refetch all data */
   refetch: () => Promise<void>;
   /** Add a new holding */
@@ -45,10 +42,26 @@ interface PortfolioDetailState {
   editHolding: (holdingId: string, input: PortfolioHoldingInput) => Promise<boolean>;
   /** Delete a holding */
   removeHolding: (holdingId: string) => Promise<boolean>;
-  /** Generate risk analysis */
-  runRiskAnalysis: () => Promise<boolean>;
   /** Clear current error */
   clearError: () => void;
+
+  // Risk analysis state (from React Query)
+  /** Current risk analysis result */
+  riskAnalysis: RiskAnalysisResult | null;
+  /** List of historical risk analyses */
+  riskAnalysisList: RiskAnalysisListItem[];
+  /** Whether risk analysis is being generated */
+  isGeneratingRiskAnalysis: boolean;
+  /** Whether switching between analyses */
+  isLoadingAnalysis: boolean;
+  /** Whether an analysis is being deleted */
+  isDeletingAnalysis: boolean;
+  /** Generate risk analysis */
+  runRiskAnalysis: () => Promise<boolean>;
+  /** Select a specific analysis from history */
+  selectAnalysis: (analysisId: string | null) => void;
+  /** Delete an analysis from history */
+  removeAnalysis: (analysisId: string) => Promise<boolean>;
 }
 
 /**
@@ -58,11 +71,21 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
-  const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
-  const [isGeneratingRiskAnalysis, setIsGeneratingRiskAnalysis] = useState(false);
+
+  // Risk analysis queries (managed by React Query)
+  const {
+    riskAnalysisList,
+    riskAnalysis,
+    isGeneratingRiskAnalysis,
+    isLoadingAnalysis,
+    isDeletingAnalysis,
+    selectAnalysis,
+    runRiskAnalysis,
+    removeAnalysis,
+  } = useRiskAnalysisQueries(portfolioId);
 
   const loadPortfolioData = useCallback(async () => {
     setIsLoading(true);
@@ -186,24 +209,6 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
     [portfolioId, refreshSummary]
   );
 
-  const runRiskAnalysis = useCallback(async (): Promise<boolean> => {
-    setIsGeneratingRiskAnalysis(true);
-    setError(null);
-
-    try {
-      const result = await generateRiskAnalysis(portfolioId);
-      setRiskAnalysis(result);
-      return true;
-    } catch (err) {
-      const message =
-        err instanceof ApiClientError ? err.detail : 'Failed to generate risk analysis';
-      setError(message);
-      return false;
-    } finally {
-      setIsGeneratingRiskAnalysis(false);
-    }
-  }, [portfolioId]);
-
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -212,16 +217,23 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
     portfolio,
     summary,
     holdings,
-    riskAnalysis,
     isLoading,
     error,
     isMutating,
-    isGeneratingRiskAnalysis,
     refetch,
     addHolding,
     editHolding,
     removeHolding,
-    runRiskAnalysis,
     clearError,
+
+    // Risk analysis state (from React Query)
+    riskAnalysis,
+    riskAnalysisList,
+    isGeneratingRiskAnalysis,
+    isLoadingAnalysis,
+    isDeletingAnalysis,
+    runRiskAnalysis,
+    selectAnalysis,
+    removeAnalysis,
   };
 }
