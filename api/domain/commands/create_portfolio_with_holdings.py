@@ -9,6 +9,7 @@ from domain.ports.portfolio_builder_repository import (
     PortfolioBuilderRepository,
     PositionInput,
     SecurityInput,
+    TransactionInput,
 )
 from domain.ports.unit_of_work import TransactionContext, UnitOfWork
 from domain.services.portfolio_builder_service import PortfolioAllocation, AllocationItem
@@ -222,6 +223,8 @@ class CreatePortfolioWithHoldingsCommand:
         # Map sector to asset class
         asset_class = map_sector_to_asset_class(item.sector, item.asset_type)
 
+        today = date.today()
+
         # Create position
         self._portfolio_builder_repository.create_position_in_transaction(
             ctx=ctx,
@@ -231,8 +234,22 @@ class CreatePortfolioWithHoldingsCommand:
                 quantity=quantity,
                 avg_cost=price,
                 broker="Generated",
-                purchase_date=date.today(),
+                purchase_date=today,
                 current_price=price,
                 asset_class=asset_class,
+            ),
+        )
+
+        # Create BUY transaction for audit trail
+        self._portfolio_builder_repository.create_transaction_in_transaction(
+            ctx=ctx,
+            transaction=TransactionInput(
+                txn_id=uuid4(),
+                portfolio_id=portfolio_id,
+                security_id=security_id,
+                txn_type="BUY",
+                quantity=quantity,
+                price=price,
+                event_ts=today,
             ),
         )

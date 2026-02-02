@@ -4,12 +4,14 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from domain.models.holding import Holding
+from domain.models.position import Position
 from domain.ports.analytics_repository import (
     AnalyticsRepository,
     FundMetadata,
     TickerPerformance,
 )
 from domain.ports.holding_repository import HoldingRepository
+from domain.ports.position_repository import PositionRepository
 
 
 class TickerAnalytics(BaseModel):
@@ -71,9 +73,11 @@ class ComputeAnalyticsCommand:
         self,
         holding_repository: HoldingRepository,
         analytics_repository: AnalyticsRepository,
+        position_repository: PositionRepository | None = None,
     ) -> None:
         self._holding_repository = holding_repository
         self._analytics_repository = analytics_repository
+        self._position_repository = position_repository
 
     def execute(self, portfolio_id: UUID | None = None) -> PortfolioAnalytics:
         """Compute and return analytics for all holdings."""

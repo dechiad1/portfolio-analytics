@@ -4,8 +4,10 @@ from uuid import UUID, uuid4
 
 from domain.models.portfolio import Portfolio
 from domain.models.holding import Holding
+from domain.models.position import Position
 from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.holding_repository import HoldingRepository
+from domain.ports.position_repository import PositionRepository
 
 
 class PortfolioNotFoundError(Exception):
@@ -25,9 +27,11 @@ class PortfolioService:
         self,
         portfolio_repository: PortfolioRepository,
         holding_repository: HoldingRepository,
+        position_repository: PositionRepository | None = None,
     ) -> None:
         self._portfolio_repo = portfolio_repository
         self._holding_repo = holding_repository
+        self._position_repo = position_repository
 
     def create_portfolio(
         self,
@@ -110,6 +114,15 @@ class PortfolioService:
         """Get all holdings in a portfolio."""
         self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
         return self._holding_repo.get_by_portfolio_id(portfolio_id)
+
+    def get_portfolio_positions(
+        self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
+    ) -> list[Position]:
+        """Get all positions in a portfolio."""
+        self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
+        if self._position_repo is None:
+            raise RuntimeError("PositionRepository not configured")
+        return self._position_repo.get_by_portfolio_id(portfolio_id)
 
     def get_portfolio_summary(
         self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False

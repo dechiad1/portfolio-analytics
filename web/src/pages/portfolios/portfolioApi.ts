@@ -9,6 +9,9 @@ import type {
   RiskAnalysisResult,
   RiskAnalysisListItem,
   CreatePortfolioResult,
+  Position,
+  AddPositionInput,
+  Transaction,
 } from '../../shared/types';
 
 /**
@@ -146,4 +149,46 @@ export async function deleteRiskAnalysis(
   analysisId: string
 ): Promise<void> {
   return api.delete(`/portfolios/${portfolioId}/risk-analyses/${analysisId}`);
+}
+
+// Position-centric API (new)
+
+/**
+ * Fetch all positions for a portfolio.
+ */
+export async function fetchPortfolioPositions(portfolioId: string): Promise<Position[]> {
+  const response = await api.get<{ positions: Position[]; count: number }>(
+    `/portfolios/${portfolioId}/positions`
+  );
+  return response.positions;
+}
+
+/**
+ * Add a position to a portfolio (creates a BUY transaction).
+ */
+export async function addPortfolioPosition(
+  portfolioId: string,
+  input: AddPositionInput
+): Promise<Position> {
+  return api.post<Position>(`/portfolios/${portfolioId}/positions`, input);
+}
+
+/**
+ * Remove a position from a portfolio (creates a SELL transaction for full quantity).
+ */
+export async function removePortfolioPosition(
+  portfolioId: string,
+  securityId: string
+): Promise<void> {
+  return api.delete(`/portfolios/${portfolioId}/positions/${securityId}`);
+}
+
+/**
+ * Fetch all transactions for a portfolio.
+ */
+export async function fetchPortfolioTransactions(portfolioId: string): Promise<Transaction[]> {
+  const response = await api.get<{ transactions: Transaction[]; count: number }>(
+    `/portfolios/${portfolioId}/transactions`
+  );
+  return response.transactions;
 }

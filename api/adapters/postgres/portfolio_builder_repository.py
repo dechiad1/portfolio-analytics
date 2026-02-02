@@ -5,6 +5,7 @@ from domain.ports.portfolio_builder_repository import (
     PortfolioBuilderRepository,
     PositionInput,
     SecurityInput,
+    TransactionInput,
 )
 from domain.ports.unit_of_work import TransactionContext
 
@@ -111,5 +112,33 @@ class PostgresPortfolioBuilderRepository(PortfolioBuilderRepository):
                 position.purchase_date,
                 position.current_price,
                 position.asset_class,
+            ),
+        )
+
+    def create_transaction_in_transaction(
+        self,
+        ctx: TransactionContext,
+        transaction: TransactionInput,
+    ) -> None:
+        """Create a transaction record within a transaction context."""
+        event_ts = datetime.combine(
+            transaction.event_ts, datetime.min.time(), timezone.utc
+        )
+        ctx.execute(
+            """
+            INSERT INTO transaction_ledger (
+                txn_id, portfolio_id, event_ts, txn_type,
+                security_id, quantity, price, fees, currency
+            )
+            VALUES (%s, %s, %s, %s::transaction_type, %s, %s, %s, 0, 'USD')
+            """,
+            (
+                transaction.txn_id,
+                transaction.portfolio_id,
+                event_ts,
+                transaction.txn_type,
+                transaction.security_id,
+                transaction.quantity,
+                transaction.price,
             ),
         )

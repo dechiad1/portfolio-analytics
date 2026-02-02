@@ -31,6 +31,19 @@ class PositionInput:
     asset_class: str
 
 
+@dataclass
+class TransactionInput:
+    """Input data for creating a transaction."""
+
+    txn_id: UUID
+    portfolio_id: UUID
+    security_id: UUID
+    txn_type: str  # BUY, SELL, etc.
+    quantity: Decimal
+    price: Decimal
+    event_ts: date
+
+
 class PortfolioBuilderRepository(ABC):
     """
     Port for portfolio building operations that require transactional support.
@@ -88,5 +101,16 @@ class PortfolioBuilderRepository(ABC):
     ) -> None:
         """
         Create a position within a transaction context.
+        """
+        pass
+
+    @abstractmethod
+    def create_transaction_in_transaction(
+        self,
+        ctx: TransactionContext,
+        transaction: TransactionInput,
+    ) -> None:
+        """
+        Create a transaction record within a transaction context.
         """
         pass

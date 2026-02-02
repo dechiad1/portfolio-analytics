@@ -6,7 +6,9 @@ from uuid import UUID
 import numpy as np
 
 from domain.models.holding import Holding
+from domain.models.position import Position
 from domain.ports.holding_repository import HoldingRepository
+from domain.ports.position_repository import PositionRepository
 from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.simulation_params_repository import SimulationParamsRepository
 
@@ -33,10 +35,12 @@ class SimulationService:
         portfolio_repository: PortfolioRepository,
         holding_repository: HoldingRepository,
         simulation_params_repository: SimulationParamsRepository,
+        position_repository: PositionRepository | None = None,
     ) -> None:
         self._portfolio_repo = portfolio_repository
         self._holding_repo = holding_repository
         self._sim_params_repo = simulation_params_repository
+        self._position_repo = position_repository
 
     def run_simulation(
         self,
@@ -91,13 +95,19 @@ class SimulationService:
         if not is_admin and portfolio.user_id != user_id:
             raise SimulationError("Access denied to this portfolio")
 
-        # Get portfolio holdings
-        holdings = self._holding_repo.get_by_portfolio_id(portfolio_id)
-        if not holdings:
-            raise SimulationError("Portfolio has no holdings")
-
-        # Calculate weights and total value
-        tickers, weights, initial_value = self._calculate_weights(holdings)
+        # Get portfolio positions (prefer positions over holdings)
+        if self._position_repo is not None:
+            positions = self._position_repo.get_by_portfolio_id(portfolio_id)
+            if not positions:
+                raise SimulationError("Portfolio has no positions")
+            tickers, weights, initial_value = self._calculate_weights_from_positions(
+                positions
+            )
+        else:
+            holdings = self._holding_repo.get_by_portfolio_id(portfolio_id)
+            if not holdings:
+                raise SimulationError("Portfolio has no holdings")
+            tickers, weights, initial_value = self._calculate_weights(holdings)
         if not tickers:
             raise SimulationError("No valid holdings with market value")
 
@@ -188,6 +198,39 @@ class SimulationService:
             if h.ticker and h.market_value > Decimal("0"):
                 tickers.append(h.ticker)
                 values.append(float(h.market_value))
+
+        if not tickers:
+            return [], np.array([]), 0.0
+
+        values_arr = np.array(values, dtype=np.float64)
+        total_value = float(values_arr.sum())
+        weights = values_arr / total_value
+
+        return tickers, weights, total_value
+
+    def _calculate_weights_from_positions(
+        self, positions: list[Position]
+    ) -> tuple[list[str], np.ndarray, float]:
+        """Calculate portfolio weights from positions.
+
+        Uses market_value if current_price is available, otherwise cost_basis.
+
+        Returns:
+            Tuple of (tickers, weights array, total portfolio value)
+        """
+        tickers = []
+        values = []
+
+        for p in positions:
+            ticker = p.ticker
+            if not ticker:
+                continue
+
+            # Use market_value if available, else cost_basis
+            value = p.market_value if p.market_value else p.cost_basis
+            if value and value > Decimal("0"):
+                tickers.append(ticker)
+                values.append(float(value))
 
         if not tickers:
             return [], np.array([]), 0.0

@@ -16,6 +16,11 @@ from domain.services.holding_service import (
     HoldingNotFoundError,
     HoldingValidationError,
 )
+from domain.services.position_service import (
+    PositionService,
+    PositionNotFoundError,
+)
+from domain.services.transaction_service import TransactionService
 from domain.services.portfolio_builder_service import PortfolioBuilderService
 from domain.commands.create_portfolio_with_holdings import (
     CreatePortfolioWithHoldingsCommand,
@@ -42,6 +47,13 @@ from api.schemas.risk_analysis import (
     RiskAnalysisListItem,
     RiskAnalysisListResponse,
 )
+from api.schemas.position import (
+    AddPositionRequest,
+    PositionResponse,
+    PositionListResponse,
+    TransactionResponse,
+    TransactionListResponse,
+)
 from api.mappers.portfolio_mapper import PortfolioMapper
 from api.mappers.holding_mapper import HoldingMapper
 from api.routers.auth import get_current_user_id, get_current_user_full
@@ -56,6 +68,9 @@ from dependencies import (
     get_risk_analysis_service,
     get_portfolio_builder_service,
     get_create_portfolio_command,
+    get_position_service,
+    get_transaction_service,
+    get_ticker_repository,
 )
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
@@ -510,6 +525,223 @@ def delete_holding(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Holding {holding_id} not found",
         )
+
+
+# Positions (new Position-centric API)
+@router.get(
+    "/{portfolio_id}/positions",
+    response_model=PositionListResponse,
+    summary="List portfolio positions",
+)
+def list_positions(
+    portfolio_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    position_service: Annotated[PositionService, Depends(get_position_service)],
+) -> PositionListResponse:
+    """List all positions in a portfolio with security info."""
+    try:
+        # Verify access to portfolio
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
+        positions = position_service.get_portfolio_positions(portfolio_id)
+        return PositionListResponse(
+            positions=[_position_to_response(p) for p in positions],
+            count=len(positions),
+        )
+    except PortfolioNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+    except PortfolioAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this portfolio",
+        )
+
+
+@router.post(
+    "/{portfolio_id}/positions",
+    response_model=PositionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add position to portfolio",
+)
+def add_position(
+    portfolio_id: UUID,
+    request: AddPositionRequest,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    position_service: Annotated[PositionService, Depends(get_position_service)],
+    ticker_repository: Annotated[object, Depends(get_ticker_repository)],
+) -> PositionResponse:
+    """Add a position to a portfolio by creating a BUY transaction."""
+    try:
+        # Verify access to portfolio
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
+
+        # Look up security_id from ticker
+        security_id = _lookup_security_id(ticker_repository, request.ticker)
+        if security_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Security with ticker '{request.ticker}' not found",
+            )
+
+        position = position_service.add_position(
+            portfolio_id=portfolio_id,
+            security_id=security_id,
+            quantity=request.quantity,
+            price=request.price,
+            event_date=request.event_date,
+        )
+
+        # Re-fetch to get enriched security data
+        enriched = position_service.get_position(portfolio_id, security_id)
+        return _position_to_response(enriched or position)
+
+    except PortfolioNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+    except PortfolioAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this portfolio",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+
+
+@router.delete(
+    "/{portfolio_id}/positions/{security_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a position",
+)
+def remove_position(
+    portfolio_id: UUID,
+    security_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    position_service: Annotated[PositionService, Depends(get_position_service)],
+) -> None:
+    """Remove a position by creating a SELL transaction for the full quantity."""
+    try:
+        # Verify access to portfolio
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
+        position_service.remove_position(portfolio_id, security_id)
+    except PortfolioNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+    except PortfolioAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this portfolio",
+        )
+    except PositionNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Position for security {security_id} not found",
+        )
+
+
+# Transactions
+@router.get(
+    "/{portfolio_id}/transactions",
+    response_model=TransactionListResponse,
+    summary="List portfolio transactions",
+)
+def list_transactions(
+    portfolio_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user_full)],
+    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    transaction_service: Annotated[TransactionService, Depends(get_transaction_service)],
+) -> TransactionListResponse:
+    """List all transactions for a portfolio."""
+    try:
+        # Verify access to portfolio
+        portfolio_service.get_portfolio(
+            portfolio_id, current_user.id, is_admin=current_user.is_admin
+        )
+        transactions = transaction_service.get_portfolio_transactions(portfolio_id)
+        return TransactionListResponse(
+            transactions=[_transaction_to_response(t) for t in transactions],
+            count=len(transactions),
+        )
+    except PortfolioNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+    except PortfolioAccessDeniedError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this portfolio",
+        )
+
+
+def _position_to_response(position) -> PositionResponse:
+    """Convert a Position domain model to a response."""
+    return PositionResponse(
+        portfolio_id=str(position.portfolio_id),
+        security_id=str(position.security_id),
+        ticker=position.security.ticker if position.security else "UNKNOWN",
+        name=position.security.display_name if position.security else "Unknown",
+        asset_type=position.security.asset_type if position.security else "equity",
+        sector=position.security.sector if position.security else None,
+        quantity=float(position.quantity),
+        avg_cost=float(position.avg_cost),
+        current_price=float(position.current_price) if position.current_price else None,
+        market_value=float(position.market_value) if position.market_value else None,
+        cost_basis=float(position.cost_basis),
+        gain_loss=float(position.gain_loss) if position.gain_loss else None,
+        gain_loss_pct=float(position.gain_loss_pct) if position.gain_loss_pct else None,
+    )
+
+
+def _transaction_to_response(transaction) -> TransactionResponse:
+    """Convert a Transaction domain model to a response."""
+    return TransactionResponse(
+        txn_id=str(transaction.txn_id),
+        portfolio_id=str(transaction.portfolio_id),
+        security_id=str(transaction.security_id) if transaction.security_id else None,
+        txn_type=transaction.txn_type.value,
+        quantity=float(transaction.quantity),
+        price=float(transaction.price) if transaction.price else None,
+        fees=float(transaction.fees),
+        event_ts=transaction.event_ts,
+        notes=transaction.notes,
+    )
+
+
+def _lookup_security_id(ticker_repository, ticker: str):
+    """Look up security_id from ticker using the repository."""
+    from adapters.postgres.connection import PostgresConnectionPool
+
+    pool = ticker_repository._pool
+    with pool.cursor() as cur:
+        cur.execute(
+            """
+            SELECT sr.security_id
+            FROM security_registry sr
+            JOIN equity_details ed ON sr.security_id = ed.security_id
+            WHERE UPPER(ed.ticker) = %s
+            """,
+            (ticker.upper(),),
+        )
+        row = cur.fetchone()
+    return row[0] if row else None
 
 
 # Risk Analysis

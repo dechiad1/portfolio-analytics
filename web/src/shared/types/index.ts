@@ -283,3 +283,48 @@ export const API_TO_ASSET_TYPE: Record<string, AssetType> = {
   'bond': 'Bond',
   'cash': 'Cash',
 };
+
+/**
+ * Position represents a cached current position in a portfolio.
+ * The source of truth is the transaction ledger.
+ */
+export interface Position {
+  portfolio_id: string;
+  security_id: string;
+  ticker: string;
+  name: string;
+  asset_type: string;
+  sector: string | null;
+  quantity: number;
+  avg_cost: number;
+  current_price: number | null;
+  market_value: number | null;
+  cost_basis: number;
+  gain_loss: number | null;
+  gain_loss_pct: number | null;
+}
+
+/**
+ * AddPositionInput is the data required to add a position.
+ */
+export interface AddPositionInput {
+  ticker: string;
+  quantity: number;
+  price: number;
+  event_date: string;
+}
+
+/**
+ * Transaction represents a ledger entry (source of truth for positions).
+ */
+export interface Transaction {
+  txn_id: string;
+  portfolio_id: string;
+  security_id: string | null;
+  txn_type: string;
+  quantity: number;
+  price: number | null;
+  fees: number;
+  event_ts: string;
+  notes: string | null;
+}

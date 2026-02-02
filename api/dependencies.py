@@ -125,6 +125,10 @@ _create_portfolio_command = None
 _unit_of_work = None
 _portfolio_builder_repository = None
 _risk_analysis_repository = None
+_position_repository = None
+_transaction_repository = None
+_position_service = None
+_transaction_service = None
 
 
 def get_postgres_pool():
@@ -257,6 +261,7 @@ def get_portfolio_service():
         _portfolio_service = PortfolioService(
             portfolio_repository=get_portfolio_repository(),
             holding_repository=get_holding_repository(),
+            position_repository=get_position_repository(),
         )
     return _portfolio_service
 
@@ -299,6 +304,7 @@ def get_risk_analysis_service():
             portfolio_repository=get_portfolio_repository(),
             holding_repository=get_holding_repository(),
             risk_analysis_repository=get_risk_analysis_repository(),
+            position_repository=get_position_repository(),
         )
     return _risk_analysis_service
 
@@ -373,6 +379,7 @@ def get_simulation_service():
             portfolio_repository=get_portfolio_repository(),
             holding_repository=get_holding_repository(),
             simulation_params_repository=get_simulation_params_repository(),
+            position_repository=get_position_repository(),
         )
     return _simulation_service
 
@@ -438,6 +445,51 @@ def get_create_portfolio_command():
     return _create_portfolio_command
 
 
+def get_position_repository():
+    """Get or create PositionRepository instance."""
+    global _position_repository
+    if _position_repository is None:
+        from adapters.postgres.position_repository import PostgresPositionRepository
+
+        _position_repository = PostgresPositionRepository(get_postgres_pool())
+    return _position_repository
+
+
+def get_transaction_repository():
+    """Get or create TransactionRepository instance."""
+    global _transaction_repository
+    if _transaction_repository is None:
+        from adapters.postgres.transaction_repository import PostgresTransactionRepository
+
+        _transaction_repository = PostgresTransactionRepository(get_postgres_pool())
+    return _transaction_repository
+
+
+def get_position_service():
+    """Get or create PositionService instance for FastAPI dependency injection."""
+    global _position_service
+    if _position_service is None:
+        from domain.services.position_service import PositionService
+
+        _position_service = PositionService(
+            position_repository=get_position_repository(),
+            transaction_repository=get_transaction_repository(),
+        )
+    return _position_service
+
+
+def get_transaction_service():
+    """Get or create TransactionService instance for FastAPI dependency injection."""
+    global _transaction_service
+    if _transaction_service is None:
+        from domain.services.transaction_service import TransactionService
+
+        _transaction_service = TransactionService(
+            transaction_repository=get_transaction_repository(),
+        )
+    return _transaction_service
+
+
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
     global _postgres_pool, _holding_repository
@@ -450,6 +502,8 @@ def reset_dependencies() -> None:
     global _simulation_params_repository, _simulation_service
     global _simulation_repository, _portfolio_builder_service
     global _create_portfolio_command, _unit_of_work, _portfolio_builder_repository
+    global _position_repository, _transaction_repository
+    global _position_service, _transaction_service
 
     if _postgres_pool is not None:
         _postgres_pool.close()
@@ -478,3 +532,7 @@ def reset_dependencies() -> None:
     _create_portfolio_command = None
     _unit_of_work = None
     _portfolio_builder_repository = None
+    _position_repository = None
+    _transaction_repository = None
+    _position_service = None
+    _transaction_service = None
