@@ -158,7 +158,7 @@ tasks:
     dir: portfolio_analytics/dbt
     cmds:
       - poetry run dbt docs generate
-      - poetry run dbt docs serve
+      - poetry run dbt docs serve --port 8888
 
   dbt:clean:
     desc: Clean DBT artifacts
@@ -282,6 +282,12 @@ tasks:
     dir: web
     cmds:
       - npm run test
+
+  lint:fe:
+    desc: Run frontend linting
+    dir: web
+    cmds:
+      - npm run lint
 
   test:dbt:
     desc: Run DBT tests

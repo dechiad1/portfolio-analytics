@@ -6,8 +6,9 @@ interface RiskAnalysisSectionProps {
   riskAnalysisList: RiskAnalysisListItem[];
   isGenerating: boolean;
   isLoadingAnalysis: boolean;
+  isDeletingAnalysis: boolean;
   onGenerate: () => Promise<boolean>;
-  onSelectAnalysis: (analysisId: string) => Promise<boolean>;
+  onSelectAnalysis: (analysisId: string | null) => void;
   onDeleteAnalysis: (analysisId: string) => Promise<boolean>;
   hasHoldings: boolean;
 }
@@ -82,6 +83,7 @@ export function RiskAnalysisSection({
   riskAnalysisList,
   isGenerating,
   isLoadingAnalysis,
+  isDeletingAnalysis,
   onGenerate,
   onSelectAnalysis,
   onDeleteAnalysis,
@@ -115,7 +117,7 @@ export function RiskAnalysisSection({
               className={styles.historySelect}
               value={riskAnalysis?.id || ''}
               onChange={handleSelectChange}
-              disabled={isGenerating || isLoadingAnalysis}
+              disabled={isGenerating || isLoadingAnalysis || isDeletingAnalysis}
               aria-label="Select risk analysis"
             >
               {riskAnalysisList.map((item) => (

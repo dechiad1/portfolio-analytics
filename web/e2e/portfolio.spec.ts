@@ -265,14 +265,17 @@ test.describe('Portfolio Management', () => {
     const options = await historyDropdown.locator('option').count();
     expect(options).toBeGreaterThanOrEqual(2);
 
+    // Get current option count before delete
+    const optionCountBefore = await historyDropdown.locator('option').count();
+
     // Set up dialog handler before clicking delete
     page.once('dialog', dialog => dialog.accept());
 
     // Delete the current analysis
     await page.getByRole('button', { name: 'Delete analysis' }).click();
 
-    // Wait for deletion to process - either another analysis should show or the list should be shorter
-    await page.waitForTimeout(1000);
+    // Wait for the option count to decrease (deterministic wait instead of timeout)
+    await expect(historyDropdown.locator('option')).toHaveCount(optionCountBefore - 1, { timeout: 5000 });
 
     // After deletion, verify the history dropdown still exists (one analysis remains)
     await expect(historyDropdown).toBeVisible({ timeout: 5000 });

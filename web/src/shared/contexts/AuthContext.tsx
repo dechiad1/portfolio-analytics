@@ -1,33 +1,13 @@
 import {
-  createContext,
-  useContext,
   useState,
   useEffect,
   useCallback,
   useMemo,
   type ReactNode,
 } from 'react';
-import type { User } from '../types';
 import { ApiClientError } from '../api/client';
 import { getCurrentUser, logout as apiLogout } from '../api/authApi';
-
-/**
- * Auth state and operations for OAuth-based authentication.
- */
-interface AuthState {
-  /** Current authenticated user */
-  user: User | null;
-  /** Whether auth is being initialized */
-  isLoading: boolean;
-  /** Whether user is authenticated */
-  isAuthenticated: boolean;
-  /** Logout the current user */
-  logout: () => Promise<void>;
-  /** Refresh user data from server */
-  refreshUser: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthState | null>(null);
+import { AuthContext } from './authContextDef';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -37,7 +17,7 @@ interface AuthProviderProps {
  * AuthProvider manages OAuth authentication state via session cookies.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ReturnType<typeof getCurrentUser> extends Promise<infer T> ? T | null : never>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
@@ -64,7 +44,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = useCallback(async () => {
     try {
       await apiLogout();
-    } catch (err) {
+    } catch {
       // Ignore logout errors
     }
     setUser(null);
@@ -83,18 +63,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-/**
- * Hook to access auth state and operations.
- * Must be used within an AuthProvider.
- */
-export function useAuth(): AuthState {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-
-  return context;
 }
