@@ -1,20 +1,19 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { PortfolioHolding } from '../../shared/types';
+import type { Position } from '../../shared/types';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner';
 import { ErrorMessage } from '../../shared/components/ErrorMessage';
 import { usePortfolioDetailState } from './usePortfolioDetailState';
 import { SummaryCards } from './components/SummaryCards';
 import { BreakdownCharts } from './components/BreakdownCharts';
-import { PortfolioHoldingsTable } from './components/PortfolioHoldingsTable';
-import { AddHoldingModal } from './components/AddHoldingModal';
-import { EditHoldingModal } from './components/EditHoldingModal';
+import { PositionsTable } from './components/PositionsTable';
+import { AddPositionModal } from './components/AddPositionModal';
 import { RiskAnalysisSection } from './components/RiskAnalysisSection';
 import { SimulationsSection } from './components/SimulationsSection';
 import styles from './PortfolioDetailPage.module.css';
 
 /**
- * PortfolioDetailPage displays a portfolio's details, holdings, and analytics.
+ * PortfolioDetailPage displays a portfolio's details, positions, and analytics.
  */
 export function PortfolioDetailPage() {
   const { id: portfolioId } = useParams<{ id: string }>();
@@ -22,14 +21,14 @@ export function PortfolioDetailPage() {
   const {
     portfolio,
     summary,
-    holdings,
+    positions,
+    transactions,
     isLoading,
     error,
     isMutating,
     refetch,
-    addHolding,
-    editHolding,
-    removeHolding,
+    addPosition,
+    removePosition,
     clearError,
     // Risk analysis state
     riskAnalysis,
@@ -43,7 +42,6 @@ export function PortfolioDetailPage() {
   } = usePortfolioDetailState(portfolioId!);
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingHolding, setEditingHolding] = useState<PortfolioHolding | null>(null);
 
   const handleAddClick = useCallback(() => {
     setShowAddModal(true);
@@ -54,31 +52,16 @@ export function PortfolioDetailPage() {
     setShowAddModal(false);
   }, []);
 
-  const handleEdit = useCallback(
-    (holding: PortfolioHolding) => {
-      setEditingHolding(holding);
-      clearError();
-    },
-    [clearError]
-  );
-
-  const handleCloseEdit = useCallback(() => {
-    setEditingHolding(null);
-  }, []);
-
   const handleDelete = useCallback(
-    async (holdingId: string) => {
-      const holding = holdings.find((h) => h.id === holdingId);
-      if (!holding) return;
-
+    async (position: Position) => {
       const confirmed = window.confirm(
-        `Are you sure you want to delete ${holding.ticker}?`
+        `Are you sure you want to remove ${position.ticker}?`
       );
       if (confirmed) {
-        await removeHolding(holdingId);
+        await removePosition(position.security_id);
       }
     },
-    [holdings, removeHolding]
+    [removePosition]
   );
 
   if (isLoading) {
@@ -139,7 +122,7 @@ export function PortfolioDetailPage() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          <span>Add Holding</span>
+          <span>Add Position</span>
         </button>
       </div>
 
@@ -155,7 +138,7 @@ export function PortfolioDetailPage() {
         </div>
       )}
 
-      {summary && holdings.length > 0 && (
+      {summary && positions.length > 0 && (
         <>
           <section className={styles.section}>
             <SummaryCards summary={summary} />
@@ -168,10 +151,9 @@ export function PortfolioDetailPage() {
       )}
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Holdings</h2>
-        <PortfolioHoldingsTable
-          holdings={holdings}
-          onEdit={handleEdit}
+        <h2 className={styles.sectionTitle}>Positions</h2>
+        <PositionsTable
+          positions={positions}
           onDelete={handleDelete}
           isDisabled={isMutating}
         />
@@ -187,30 +169,21 @@ export function PortfolioDetailPage() {
           onGenerate={runRiskAnalysis}
           onSelectAnalysis={selectAnalysis}
           onDeleteAnalysis={removeAnalysis}
-          hasHoldings={holdings.length > 0}
+          hasHoldings={positions.length > 0}
         />
       </section>
 
       <section className={styles.section}>
         <SimulationsSection
           portfolioId={portfolioId!}
-          hasHoldings={holdings.length > 0}
+          hasHoldings={positions.length > 0}
         />
       </section>
 
       {showAddModal && (
-        <AddHoldingModal
-          onSubmit={addHolding}
+        <AddPositionModal
+          onSubmit={addPosition}
           onClose={handleCloseAdd}
-          isSubmitting={isMutating}
-        />
-      )}
-
-      {editingHolding && (
-        <EditHoldingModal
-          holding={editingHolding}
-          onSubmit={(input) => editHolding(editingHolding.id, input)}
-          onClose={handleCloseEdit}
           isSubmitting={isMutating}
         />
       )}

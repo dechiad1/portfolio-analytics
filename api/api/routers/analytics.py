@@ -14,7 +14,7 @@ from api.schemas.analytics import (
     TickerDetailsResponse,
     TickerPriceResponse,
 )
-from api.mappers.holding_mapper import HoldingMapper
+from api.mappers.analytics_mapper import AnalyticsMapper
 from dependencies import get_compute_analytics_command, get_analytics_repository
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -30,7 +30,7 @@ def get_analytics(
 ) -> AnalyticsResponse:
     """Compute and return analytics for all holdings."""
     analytics = command.execute(None)
-    return HoldingMapper.analytics_to_response(analytics)
+    return AnalyticsMapper.analytics_to_response(analytics)
 
 
 @router.get(

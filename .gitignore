@@ -60,3 +60,4 @@ Thumbs.db
 holdings.csv
 
 web/playwright-report
+web/test-results

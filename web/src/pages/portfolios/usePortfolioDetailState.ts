@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import type {
   Portfolio,
   PortfolioSummary,
-  PortfolioHolding,
-  PortfolioHoldingInput,
   Position,
   AddPositionInput,
   Transaction,
@@ -14,10 +12,6 @@ import { ApiClientError } from '../../shared/api/client';
 import {
   getPortfolio,
   getPortfolioSummary,
-  fetchPortfolioHoldings,
-  addPortfolioHolding,
-  updatePortfolioHolding,
-  deletePortfolioHolding,
   fetchPortfolioPositions,
   addPortfolioPosition,
   removePortfolioPosition,
@@ -33,9 +27,7 @@ interface PortfolioDetailState {
   portfolio: Portfolio | null;
   /** Portfolio summary */
   summary: PortfolioSummary | null;
-  /** Portfolio holdings (legacy) */
-  holdings: PortfolioHolding[];
-  /** Portfolio positions (new) */
+  /** Portfolio positions */
   positions: Position[];
   /** Transaction history */
   transactions: Transaction[];
@@ -47,12 +39,6 @@ interface PortfolioDetailState {
   isMutating: boolean;
   /** Refetch all data */
   refetch: () => Promise<void>;
-  /** Add a new holding (legacy) */
-  addHolding: (input: PortfolioHoldingInput) => Promise<boolean>;
-  /** Update an existing holding (legacy) */
-  editHolding: (holdingId: string, input: PortfolioHoldingInput) => Promise<boolean>;
-  /** Delete a holding (legacy) */
-  removeHolding: (holdingId: string) => Promise<boolean>;
   /** Add a new position */
   addPosition: (input: AddPositionInput) => Promise<boolean>;
   /** Remove a position */
@@ -85,7 +71,6 @@ interface PortfolioDetailState {
 export function usePortfolioDetailState(portfolioId: string): PortfolioDetailState {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
-  const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,15 +99,13 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
       setPortfolio(portfolioData);
 
       // Then fetch related data in parallel
-      const [summaryData, holdingsData, positionsData, transactionsData] = await Promise.all([
+      const [summaryData, positionsData, transactionsData] = await Promise.all([
         getPortfolioSummary(portfolioId).catch(() => null),
-        fetchPortfolioHoldings(portfolioId).catch(() => []),
         fetchPortfolioPositions(portfolioId).catch(() => []),
         fetchPortfolioTransactions(portfolioId).catch(() => []),
       ]);
 
       setSummary(summaryData);
-      setHoldings(holdingsData);
       setPositions(positionsData);
       setTransactions(transactionsData);
     } catch (err) {
@@ -158,77 +141,6 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
       // Silently fail summary refresh, it's not critical
     }
   }, [portfolioId]);
-
-  const addHolding = useCallback(
-    async (input: PortfolioHoldingInput): Promise<boolean> => {
-      setIsMutating(true);
-      setError(null);
-
-      try {
-        const newHolding = await addPortfolioHolding(portfolioId, input);
-        setHoldings((prev) => [...prev, newHolding]);
-        // Refresh summary after adding holding
-        refreshSummary();
-        return true;
-      } catch (err) {
-        const message =
-          err instanceof ApiClientError ? err.detail : 'Failed to add holding';
-        setError(message);
-        return false;
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    [portfolioId, refreshSummary]
-  );
-
-  const editHolding = useCallback(
-    async (holdingId: string, input: PortfolioHoldingInput): Promise<boolean> => {
-      setIsMutating(true);
-      setError(null);
-
-      try {
-        const updatedHolding = await updatePortfolioHolding(portfolioId, holdingId, input);
-        setHoldings((prev) =>
-          prev.map((h) => (h.id === holdingId ? updatedHolding : h))
-        );
-        // Refresh summary after updating holding
-        refreshSummary();
-        return true;
-      } catch (err) {
-        const message =
-          err instanceof ApiClientError ? err.detail : 'Failed to update holding';
-        setError(message);
-        return false;
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    [portfolioId, refreshSummary]
-  );
-
-  const removeHolding = useCallback(
-    async (holdingId: string): Promise<boolean> => {
-      setIsMutating(true);
-      setError(null);
-
-      try {
-        await deletePortfolioHolding(portfolioId, holdingId);
-        setHoldings((prev) => prev.filter((h) => h.id !== holdingId));
-        // Refresh summary after deleting holding
-        refreshSummary();
-        return true;
-      } catch (err) {
-        const message =
-          err instanceof ApiClientError ? err.detail : 'Failed to delete holding';
-        setError(message);
-        return false;
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    [portfolioId, refreshSummary]
-  );
 
   const addPosition = useCallback(
     async (input: AddPositionInput): Promise<boolean> => {
@@ -289,16 +201,12 @@ export function usePortfolioDetailState(portfolioId: string): PortfolioDetailSta
   return {
     portfolio,
     summary,
-    holdings,
     positions,
     transactions,
     isLoading,
     error,
     isMutating,
     refetch,
-    addHolding,
-    editHolding,
-    removeHolding,
     addPosition,
     removePosition,
     clearError,
