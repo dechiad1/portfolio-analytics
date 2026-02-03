@@ -127,3 +127,18 @@ class PostgresTickerRepository(TickerRepository):
             )
             for row in rows
         ]
+
+    def get_security_id_by_ticker(self, ticker: str) -> UUID | None:
+        """Look up security_id by ticker symbol."""
+        with self._pool.cursor() as cur:
+            cur.execute(
+                """
+                SELECT sr.security_id
+                FROM security_registry sr
+                JOIN equity_details ed ON sr.security_id = ed.security_id
+                WHERE UPPER(ed.ticker) = %s
+                """,
+                (ticker.upper(),),
+            )
+            row = cur.fetchone()
+        return row[0] if row else None

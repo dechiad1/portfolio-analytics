@@ -15,6 +15,7 @@ from domain.services.position_service import (
     PositionService,
     PositionNotFoundError,
 )
+from domain.ports.ticker_repository import TickerRepository
 from domain.services.transaction_service import TransactionService
 from domain.services.portfolio_builder_service import PortfolioBuilderService
 from domain.commands.create_portfolio_with_holdings import (
@@ -317,7 +318,7 @@ def add_position(
     current_user: Annotated[User, Depends(get_current_user_full)],
     portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
     position_service: Annotated[PositionService, Depends(get_position_service)],
-    ticker_repository: Annotated[object, Depends(get_ticker_repository)],
+    ticker_repository: Annotated[TickerRepository, Depends(get_ticker_repository)],
 ) -> PositionResponse:
     """Add a position to a portfolio by creating a BUY transaction."""
     try:
@@ -327,7 +328,7 @@ def add_position(
         )
 
         # Look up security_id from ticker
-        security_id = _lookup_security_id(ticker_repository, request.ticker)
+        security_id = ticker_repository.get_security_id_by_ticker(request.ticker)
         if security_id is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -466,25 +467,6 @@ def _transaction_to_response(transaction) -> TransactionResponse:
         event_ts=transaction.event_ts,
         notes=transaction.notes,
     )
-
-
-def _lookup_security_id(ticker_repository, ticker: str):
-    """Look up security_id from ticker using the repository."""
-    from adapters.postgres.connection import PostgresConnectionPool
-
-    pool = ticker_repository._pool
-    with pool.cursor() as cur:
-        cur.execute(
-            """
-            SELECT sr.security_id
-            FROM security_registry sr
-            JOIN equity_details ed ON sr.security_id = ed.security_id
-            WHERE UPPER(ed.ticker) = %s
-            """,
-            (ticker.upper(),),
-        )
-        row = cur.fetchone()
-    return row[0] if row else None
 
 
 # Risk Analysis

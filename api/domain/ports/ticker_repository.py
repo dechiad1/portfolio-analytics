@@ -32,3 +32,16 @@ class TickerRepository(ABC):
     def get_all_securities(self) -> list[Security]:
         """Get all securities from the registry with their details."""
         pass
+
+    @abstractmethod
+    def get_security_id_by_ticker(self, ticker: str) -> UUID | None:
+        """
+        Look up security_id by ticker symbol.
+
+        Args:
+            ticker: Stock/ETF ticker symbol (case-insensitive)
+
+        Returns:
+            security_id if found, None otherwise
+        """
+        pass

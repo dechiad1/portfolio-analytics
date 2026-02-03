@@ -6,12 +6,7 @@ from api.schemas.position import (
     TransactionListResponse,
 )
 from api.schemas.analytics import AnalyticsResponse
-from api.schemas.auth import (
-    RegisterRequest,
-    LoginRequest,
-    AuthResponse,
-    UserResponse,
-)
+from api.schemas.auth import UserResponse
 from api.schemas.portfolio import (
     CreatePortfolioRequest,
     UpdatePortfolioRequest,
@@ -27,9 +22,6 @@ __all__ = [
     "TransactionResponse",
     "TransactionListResponse",
     "AnalyticsResponse",
-    "RegisterRequest",
-    "LoginRequest",
-    "AuthResponse",
     "UserResponse",
     "CreatePortfolioRequest",
     "UpdatePortfolioRequest",
