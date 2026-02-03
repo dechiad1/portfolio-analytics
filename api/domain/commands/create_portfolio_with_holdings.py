@@ -24,73 +24,6 @@ class CreatePortfolioResult:
     unmatched_descriptions: list[str]
 
 
-# Mapping from sector to asset class
-SECTOR_TO_ASSET_CLASS: dict[str, str] = {
-    # U.S. Equity sectors
-    "Technology": "U.S. Stocks",
-    "Healthcare": "U.S. Stocks",
-    "Financials": "U.S. Stocks",
-    "Consumer Discretionary": "U.S. Stocks",
-    "Consumer Staples": "U.S. Stocks",
-    "Energy": "U.S. Stocks",
-    "Materials": "U.S. Stocks",
-    "Industrials": "U.S. Stocks",
-    "Utilities": "U.S. Stocks",
-    "Real Estate": "U.S. Stocks",
-    "Communication Services": "U.S. Stocks",
-    # Broad market / diversified
-    "Broad Market": "U.S. Stocks",
-    "Large Cap": "U.S. Stocks",
-    "Mid Cap": "U.S. Stocks",
-    "Small Cap": "U.S. Stocks",
-    # International
-    "International": "International Stocks",
-    "Emerging Markets": "International Stocks",
-    "Developed Markets": "International Stocks",
-    "Europe": "International Stocks",
-    "Asia Pacific": "International Stocks",
-    "Latin America": "International Stocks",
-    # Bonds
-    "Bonds": "Bonds",
-    "Government Bonds": "Bonds",
-    "Corporate Bonds": "Bonds",
-    "Municipal Bonds": "Bonds",
-    "High Yield Bonds": "Bonds",
-    "Treasury": "Bonds",
-    # Other
-    "Commodities": "Commodities",
-    "Gold": "Commodities",
-    "Oil & Gas": "Commodities",
-    "Cash": "Cash & Equivalents",
-    "Money Market": "Cash & Equivalents",
-}
-
-
-def map_sector_to_asset_class(sector: str | None, asset_type: str | None = None) -> str:
-    """Map sector to asset class, considering asset type as fallback."""
-    if sector:
-        # Direct match
-        if sector in SECTOR_TO_ASSET_CLASS:
-            return SECTOR_TO_ASSET_CLASS[sector]
-        # Case-insensitive match
-        sector_lower = sector.lower()
-        for key, value in SECTOR_TO_ASSET_CLASS.items():
-            if key.lower() == sector_lower:
-                return value
-
-    # Fallback based on asset type
-    if asset_type:
-        asset_type_upper = asset_type.upper()
-        if asset_type_upper == "BOND":
-            return "Bonds"
-        elif asset_type_upper == "CASH":
-            return "Cash & Equivalents"
-        elif asset_type_upper in ("EQUITY", "ETF"):
-            return "U.S. Stocks"
-
-    return "U.S. Stocks"  # Default
-
-
 class CreatePortfolioWithHoldingsCommand:
     """
     Command to create a portfolio with holdings in a single transaction.
@@ -220,9 +153,6 @@ class CreatePortfolioWithHoldingsCommand:
         # Calculate quantity from value and price
         quantity = (item.value / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
 
-        # Map sector to asset class
-        asset_class = map_sector_to_asset_class(item.sector, item.asset_type)
-
         today = date.today()
 
         # Create position
@@ -233,10 +163,6 @@ class CreatePortfolioWithHoldingsCommand:
                 security_id=security_id,
                 quantity=quantity,
                 avg_cost=price,
-                broker="Generated",
-                purchase_date=today,
-                current_price=price,
-                asset_class=asset_class,
             ),
         )
 

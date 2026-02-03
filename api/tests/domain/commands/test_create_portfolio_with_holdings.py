@@ -7,7 +7,6 @@ import pytest
 
 from domain.commands.create_portfolio_with_holdings import (
     CreatePortfolioWithHoldingsCommand,
-    map_sector_to_asset_class,
 )
 from domain.services.portfolio_builder_service import AllocationItem, PortfolioAllocation
 from domain.value_objects import TickerDetails
@@ -145,27 +144,3 @@ class TestExecute:
             allocation=sample_allocation,
         )
         assert mock_portfolio_builder_repository.create_security_in_transaction.call_count == 2
-
-
-class TestMapSectorToAssetClass:
-    def test_direct_match(self):
-        assert map_sector_to_asset_class("Technology") == "U.S. Stocks"
-        assert map_sector_to_asset_class("Bonds") == "Bonds"
-        assert map_sector_to_asset_class("Cash") == "Cash & Equivalents"
-
-    def test_case_insensitive(self):
-        assert map_sector_to_asset_class("technology") == "U.S. Stocks"
-        assert map_sector_to_asset_class("BONDS") == "Bonds"
-
-    def test_international(self):
-        assert map_sector_to_asset_class("Emerging Markets") == "International Stocks"
-
-    def test_fallback_to_asset_type(self):
-        assert map_sector_to_asset_class(None, "BOND") == "Bonds"
-        assert map_sector_to_asset_class(None, "CASH") == "Cash & Equivalents"
-        assert map_sector_to_asset_class(None, "EQUITY") == "U.S. Stocks"
-        assert map_sector_to_asset_class(None, "ETF") == "U.S. Stocks"
-
-    def test_default(self):
-        assert map_sector_to_asset_class(None) == "U.S. Stocks"
-        assert map_sector_to_asset_class("UnknownSector") == "U.S. Stocks"

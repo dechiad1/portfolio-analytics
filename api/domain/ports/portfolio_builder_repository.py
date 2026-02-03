@@ -25,10 +25,6 @@ class PositionInput:
     security_id: UUID
     quantity: Decimal
     avg_cost: Decimal
-    broker: str
-    purchase_date: date
-    current_price: Decimal
-    asset_class: str
 
 
 @dataclass

@@ -97,21 +97,14 @@ class PostgresPortfolioBuilderRepository(PortfolioBuilderRepository):
         """Create a position within a transaction context."""
         ctx.execute(
             """
-            INSERT INTO position_current (
-                portfolio_id, security_id, quantity, avg_cost,
-                broker, purchase_date, current_price, asset_class
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO position_current (portfolio_id, security_id, quantity, avg_cost)
+            VALUES (%s, %s, %s, %s)
             """,
             (
                 position.portfolio_id,
                 position.security_id,
                 position.quantity,
                 position.avg_cost,
-                position.broker,
-                position.purchase_date,
-                position.current_price,
-                position.asset_class,
             ),
         )
 
