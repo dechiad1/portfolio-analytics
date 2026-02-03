@@ -348,6 +348,72 @@ tasks:
     silent: false
 
   # =============================================================================
+  # CLOUD DEPLOYMENT (S3 + Iceberg)
+  # =============================================================================
+  cloud:fetch:
+    desc: Run ingestion to S3-compatible storage (requires S3 env vars)
+    env:
+      USE_S3_STORAGE: "true"
+    cmds:
+      - task: cloud:check-env
+      - poetry run python portfolio_analytics/scripts/replicate_postgres_to_duckdb.py
+      - poetry run python portfolio_analytics/scripts/ingest_prices.py
+      - poetry run python portfolio_analytics/scripts/ingest_benchmarks.py
+      - poetry run python portfolio_analytics/scripts/ingest_treasury_yields.py
+      - poetry run python portfolio_analytics/scripts/ingest_fund_metadata.py
+      - poetry run python portfolio_analytics/scripts/ingest_analyst_targets.py
+
+  cloud:dbt:
+    desc: Run dbt with prod target (in-memory DuckDB reading from S3)
+    dir: portfolio_analytics/dbt
+    cmds:
+      - task: cloud:check-env
+      - poetry run dbt seed --target prod
+      - poetry run dbt run --target prod
+
+  cloud:export-iceberg:
+    desc: Export mart tables to Iceberg format on S3
+    cmds:
+      - task: cloud:check-env
+      - poetry run python portfolio_analytics/scripts/export_marts_to_iceberg.py
+
+  cloud:refresh:
+    desc: Full cloud pipeline (fetch + dbt + iceberg export)
+    cmds:
+      - task: cloud:fetch
+      - task: dbt  # Run local dbt first to create tables in DuckDB
+      - task: cloud:export-iceberg
+
+  cloud:check-env:
+    desc: Verify cloud environment variables are set
+    cmds:
+      - |
+        missing=""
+        [ -z "$S3_ACCESS_KEY_ID" ] && missing="$missing S3_ACCESS_KEY_ID"
+        [ -z "$S3_SECRET_ACCESS_KEY" ] && missing="$missing S3_SECRET_ACCESS_KEY"
+        [ -z "$S3_BUCKET" ] && missing="$missing S3_BUCKET"
+        if [ -n "$missing" ]; then
+          echo "ERROR: Missing required environment variables:$missing"
+          echo ""
+          echo "Required variables:"
+          echo "  S3_ACCESS_KEY_ID     - S3 access key"
+          echo "  S3_SECRET_ACCESS_KEY - S3 secret key"
+          echo "  S3_BUCKET            - S3 bucket name"
+          echo ""
+          echo "Optional variables:"
+          echo "  S3_ENDPOINT          - Custom S3 endpoint (for MinIO, GCS)"
+          echo "  S3_PREFIX            - Path prefix (default: portfolio-analytics)"
+          echo "  S3_REGION            - AWS region (default: us-east-1)"
+          echo "  ICEBERG_CATALOG_URI  - Postgres URI for Iceberg catalog"
+          exit 1
+        fi
+        echo "S3 environment configured:"
+        echo "  Bucket: $S3_BUCKET"
+        echo "  Prefix: ${S3_PREFIX:-portfolio-analytics}"
+        echo "  Endpoint: ${S3_ENDPOINT:-AWS S3 (default)}"
+    silent: true
+
+  # =============================================================================
   # HELP
   # =============================================================================
   default:

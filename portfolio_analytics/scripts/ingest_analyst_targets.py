@@ -14,12 +14,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import duckdb
 import pandas as pd
 import yfinance as yf
 
 sys.path.append(str(Path(__file__).parent))
-from config import TICKERS, get_db_path
+from config import TICKERS, get_storage
 
 
 def fetch_analyst_targets(tickers: list[str]) -> pd.DataFrame:
@@ -96,63 +95,35 @@ def fetch_analyst_targets(tickers: list[str]) -> pd.DataFrame:
     return df
 
 
-def load_to_duckdb(df: pd.DataFrame, table_name: str = "raw_analyst_targets") -> None:
+def load_to_storage(df: pd.DataFrame, table_name: str = "raw_analyst_targets") -> None:
     """
-    Load analyst targets into DuckDB database.
+    Load analyst targets into storage (DuckDB or S3).
 
     Args:
         df: DataFrame to load
         table_name: Name of the table to create/replace
     """
-    print(f"\nLoading analyst targets to DuckDB...")
+    print(f"\nLoading analyst targets to storage...")
 
-    db_path = get_db_path()
-    print(f"Database: {db_path}")
-
-    con = duckdb.connect(db_path)
-
-    # Drop table if exists and create new one
-    con.execute(f"DROP TABLE IF EXISTS {table_name}")
-    con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
-
-    # Verify the data
-    count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-    print(f"Loaded {count:,} records to table '{table_name}'")
+    storage = get_storage()
+    storage.write_table(df, table_name)
 
     # Show sample
-    print("\nSample data:")
-    sample = con.execute(
-        f"""
-        SELECT
-            ticker,
-            current_price,
-            target_mean_price,
-            analyst_count,
-            ROUND(implied_return * 100, 2) as implied_return_pct
-        FROM {table_name}
-        WHERE target_mean_price IS NOT NULL
-        ORDER BY implied_return DESC
-        LIMIT 10
-    """
-    ).df()
-    print(sample.to_string(index=False))
+    print("\nSample data (top by implied return):")
+    sample = df[df['target_mean_price'].notna()].nlargest(10, 'implied_return')[
+        ['ticker', 'current_price', 'target_mean_price', 'analyst_count', 'implied_return']
+    ]
+    sample['implied_return_pct'] = (sample['implied_return'] * 100).round(2)
+    print(sample.drop(columns=['implied_return']).to_string(index=False))
 
     # Show data quality stats
     print("\nData Quality Summary:")
-    stats = con.execute(
-        f"""
-        SELECT
-            COUNT(*) as total_records,
-            SUM(CASE WHEN current_price IS NOT NULL THEN 1 ELSE 0 END) as has_current_price,
-            SUM(CASE WHEN target_mean_price IS NOT NULL THEN 1 ELSE 0 END) as has_target,
-            SUM(CASE WHEN analyst_count > 0 THEN 1 ELSE 0 END) as has_analysts,
-            ROUND(AVG(analyst_count), 1) as avg_analyst_count
-        FROM {table_name}
-    """
-    ).df()
-    print(stats.to_string(index=False))
-
-    con.close()
+    print(f"  Total records: {len(df)}")
+    print(f"  Has current price: {df['current_price'].notna().sum()}")
+    print(f"  Has target price: {df['target_mean_price'].notna().sum()}")
+    print(f"  Has analysts: {(df['analyst_count'] > 0).sum()}")
+    if df['analyst_count'].notna().any():
+        print(f"  Avg analyst count: {df['analyst_count'].mean():.1f}")
 
 
 def main() -> None:
@@ -167,8 +138,8 @@ def main() -> None:
         # Fetch analyst targets
         targets_df = fetch_analyst_targets(TICKERS)
 
-        # Load to database
-        load_to_duckdb(targets_df, "raw_analyst_targets")
+        # Load to storage
+        load_to_storage(targets_df, "raw_analyst_targets")
 
         print("\n" + "=" * 60)
         print("SUCCESS: Analyst targets ingestion complete!")

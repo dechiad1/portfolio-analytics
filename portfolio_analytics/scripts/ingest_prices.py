@@ -4,45 +4,44 @@ Script to fetch historical price data for portfolio holdings using yfinance
 
 import yfinance as yf
 import pandas as pd
-import duckdb
 import sys
 from pathlib import Path
 
 # Add parent directory to path to import config
 sys.path.append(str(Path(__file__).parent))
-from config import START_DATE, END_DATE, TICKERS, get_db_path
+from config import START_DATE, END_DATE, TICKERS, get_storage
 
 def fetch_prices(tickers, start_date, end_date):
     """
     Fetch historical adjusted close prices for given tickers
-    
+
     Args:
         tickers: List of ticker symbols
         start_date: Start date in 'YYYY-MM-DD' format
         end_date: End date in 'YYYY-MM-DD' format
-    
+
     Returns:
         DataFrame with columns: date, ticker, price, volume
     """
     print(f"\n Fetching price data for {len(tickers)} tickers...")
     print(f"Date range: {start_date} to {end_date}")
     print("-" * 60)
-    
+
     all_data = []
-    
+
     for i, ticker in enumerate(tickers, 1):
         try:
             print(f"[{i}/{len(tickers)}] Fetching {ticker}...", end=" ")
-            
+
             # Download data from Yahoo Finance
             data = yf.download(
-                ticker, 
-                start=start_date, 
+                ticker,
+                start=start_date,
                 end=end_date,
                 progress=False,
                 auto_adjust=True  # Use adjusted prices
             )
-            
+
             if data.empty:
                 print("No data available")
                 continue
@@ -64,56 +63,41 @@ def fetch_prices(tickers, start_date, end_date):
                 'close': data['Close'],
                 'volume': data['Volume']
             })
-            
+
             all_data.append(df)
-            print(f"✓ Got {len(df)} days of data")
-            
+            print(f"Got {len(df)} days of data")
+
         except Exception as e:
             print(f"Error: {str(e)}")
             continue
-    
+
     if not all_data:
         raise ValueError("No data was successfully fetched for any ticker")
-    
+
     # Combine all data
     combined_df = pd.concat(all_data, ignore_index=True)
-    
+
     print("-" * 60)
-    print(f"✓ Successfully fetched data for {len(all_data)} / {len(tickers)} tickers")
+    print(f"Successfully fetched data for {len(all_data)} / {len(tickers)} tickers")
     print(f"Total records: {len(combined_df):,}")
-    
+
     return combined_df
 
-def load_to_duckdb(df, table_name='raw_prices'):
+def load_to_storage(df, table_name='raw_prices'):
     """
-    Load dataframe into DuckDB database
-    
+    Load dataframe into storage (DuckDB or S3)
+
     Args:
         df: DataFrame to load
         table_name: Name of the table to create/replace
     """
-    print(f"\n Loading data to DuckDB...")
-    
-    db_path = get_db_path()
-    print(f"Database: {db_path}")
-    
-    # Connect to DuckDB
-    con = duckdb.connect(db_path)
-    
-    # Drop table if exists and create new one
-    con.execute(f"DROP TABLE IF EXISTS {table_name}")
-    con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
-    
-    # Verify the data
-    count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-    print(f"✓ Loaded {count:,} records to table '{table_name}'")
-    
-    # Show sample
+    print(f"\n Loading data to storage...")
+
+    storage = get_storage()
+    storage.write_table(df, table_name)
+
     print("\nSample data:")
-    sample = con.execute(f"SELECT * FROM {table_name} LIMIT 5").df()
-    print(sample.to_string(index=False))
-    
-    con.close()
+    print(df.head().to_string(index=False))
 
 def main():
     """Main execution function"""
@@ -121,17 +105,17 @@ def main():
         print("=" * 60)
         print("PORTFOLIO PRICE DATA INGESTION")
         print("=" * 60)
-        
+
         # Fetch prices
         prices_df = fetch_prices(TICKERS, START_DATE, END_DATE)
-        
-        # Load to database
-        load_to_duckdb(prices_df, 'raw_prices')
-        
+
+        # Load to storage
+        load_to_storage(prices_df, 'raw_prices')
+
         print("\n" + "=" * 60)
-        print("✓ SUCCESS: Price data ingestion complete!")
+        print("SUCCESS: Price data ingestion complete!")
         print("=" * 60)
-        
+
     except Exception as e:
         print(f"\n ERROR: {str(e)}")
         sys.exit(1)

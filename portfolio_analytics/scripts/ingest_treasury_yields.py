@@ -10,12 +10,9 @@ FRED Series IDs:
 - DGS30: 30-Year Treasury Constant Maturity Rate
 """
 
-import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
-import duckdb
 import pandas as pd
 
 try:
@@ -25,7 +22,7 @@ except ImportError:
     sys.exit(1)
 
 sys.path.append(str(Path(__file__).parent))
-from config import START_DATE, END_DATE, FRED_API_KEY, get_db_path
+from config import START_DATE, END_DATE, FRED_API_KEY, get_storage
 
 
 # Treasury yield series from FRED
@@ -56,7 +53,7 @@ def fetch_treasury_yields(api_key: str, start_date: str, end_date: str) -> pd.Da
             "Then set: export FRED_API_KEY=your_key"
         )
 
-    print(f"\n📈 Fetching Treasury yields from FRED...")
+    print(f"\n Fetching Treasury yields from FRED...")
     print(f"Date range: {start_date} to {end_date}")
     print("-" * 60)
 
@@ -75,7 +72,7 @@ def fetch_treasury_yields(api_key: str, start_date: str, end_date: str) -> pd.Da
             )
 
             if series.empty:
-                print("❌ No data")
+                print("No data")
                 continue
 
             # Convert to DataFrame
@@ -91,10 +88,10 @@ def fetch_treasury_yields(api_key: str, start_date: str, end_date: str) -> pd.Da
             df = df.dropna(subset=["yield_rate"])
 
             all_data.append(df)
-            print(f"✓ Got {len(df)} days")
+            print(f"Got {len(df)} days")
 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"Error: {e}")
             continue
 
     if not all_data:
@@ -103,57 +100,27 @@ def fetch_treasury_yields(api_key: str, start_date: str, end_date: str) -> pd.Da
     combined = pd.concat(all_data, ignore_index=True)
 
     print("-" * 60)
-    print(f"✓ Fetched {len(combined):,} total yield observations")
+    print(f"Fetched {len(combined):,} total yield observations")
 
     return combined
 
 
-def load_to_duckdb(df: pd.DataFrame, table_name: str = "raw_treasury_yields"):
+def load_to_storage(df: pd.DataFrame, table_name: str = "raw_treasury_yields"):
     """
-    Load Treasury yields to DuckDB.
+    Load Treasury yields to storage (DuckDB or S3).
 
     Args:
         df: DataFrame with yield data
         table_name: Target table name
     """
-    print(f"\n💾 Loading Treasury yields to DuckDB...")
+    print(f"\n Loading Treasury yields to storage...")
 
-    db_path = get_db_path()
-    print(f"Database: {db_path}")
-
-    con = duckdb.connect(db_path)
-
-    # Drop and recreate table
-    con.execute(f"DROP TABLE IF EXISTS {table_name}")
-    con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
-
-    count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-    print(f"✓ Loaded {count:,} records to '{table_name}'")
+    storage = get_storage()
+    storage.write_table(df, table_name)
 
     # Show sample
     print("\nSample data:")
-    sample = con.execute(f"SELECT * FROM {table_name} ORDER BY date DESC LIMIT 8").df()
-    print(sample.to_string(index=False))
-
-    # Show yield curve for latest date
-    print("\nLatest yield curve:")
-    latest = con.execute(
-        f"""
-        SELECT tenor, yield_rate * 100 as yield_pct
-        FROM {table_name}
-        WHERE date = (SELECT MAX(date) FROM {table_name})
-        ORDER BY
-            CASE tenor
-                WHEN '2Y' THEN 1
-                WHEN '5Y' THEN 2
-                WHEN '10Y' THEN 3
-                WHEN '30Y' THEN 4
-            END
-    """
-    ).df()
-    print(latest.to_string(index=False))
-
-    con.close()
+    print(df.tail(8).to_string(index=False))
 
 
 def main():
@@ -166,15 +133,15 @@ def main():
         # Fetch yields
         yields_df = fetch_treasury_yields(FRED_API_KEY, START_DATE, END_DATE)
 
-        # Load to database
-        load_to_duckdb(yields_df)
+        # Load to storage
+        load_to_storage(yields_df)
 
         print("\n" + "=" * 60)
-        print("✓ SUCCESS: Treasury yield ingestion complete!")
+        print("SUCCESS: Treasury yield ingestion complete!")
         print("=" * 60)
 
     except Exception as e:
-        print(f"\n❌ ERROR: {str(e)}")
+        print(f"\n ERROR: {str(e)}")
         sys.exit(1)
 
 
