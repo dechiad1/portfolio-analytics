@@ -151,42 +151,6 @@ export interface CreatePortfolioResult {
 }
 
 /**
- * PortfolioHolding represents a single holding within a portfolio.
- */
-export interface PortfolioHolding {
-  id: string;
-  portfolio_id: string;
-  ticker: string;
-  name: string;
-  asset_type: string;
-  asset_class: string;
-  sector: string;
-  broker: string;
-  quantity: number;
-  purchase_price: number;
-  current_price: number;
-  purchase_date: string;
-  created_at: string;
-  updated_at: string;
-}
-
-/**
- * PortfolioHoldingInput is the data required to create or update a portfolio holding.
- */
-export interface PortfolioHoldingInput {
-  ticker: string;
-  name: string;
-  asset_type: string;
-  asset_class: string;
-  sector: string;
-  broker: string;
-  quantity: number;
-  purchase_price: number;
-  current_price: number;
-  purchase_date: string;
-}
-
-/**
  * BreakdownItem represents a single item in portfolio breakdowns.
  */
 export interface BreakdownItem {

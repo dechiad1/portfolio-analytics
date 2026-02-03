@@ -105,7 +105,6 @@ _postgres_pool = None
 _user_repository = None
 _portfolio_repository = None
 _analytics_repository = None
-_auth_service = None
 _oauth_provider = None
 _oauth_service = None
 _portfolio_service = None
@@ -176,22 +175,6 @@ def get_analytics_repository():
         db_path = Path(__file__).parent / config.database.duckdb.path
         _analytics_repository = DuckDBAnalyticsRepository(str(db_path))
     return _analytics_repository
-
-
-def get_auth_service():
-    """Get or create AuthService instance for FastAPI dependency injection."""
-    global _auth_service
-    if _auth_service is None:
-        from domain.services.auth_service import AuthService
-
-        config = load_config()
-        _auth_service = AuthService(
-            user_repository=get_user_repository(),
-            jwt_secret=config.auth.jwt_secret,
-            jwt_algorithm=config.auth.jwt_algorithm,
-            token_expiry_hours=config.auth.token_expiry_hours,
-        )
-    return _auth_service
 
 
 def get_oauth_provider():
@@ -470,7 +453,7 @@ def reset_dependencies() -> None:
     global _postgres_pool
     global _user_repository, _portfolio_repository
     global _analytics_repository
-    global _auth_service, _oauth_provider, _oauth_service, _portfolio_service
+    global _oauth_provider, _oauth_service, _portfolio_service
     global _llm_repository, _risk_analysis_service, _risk_analysis_repository
     global _compute_analytics_command
     global _ticker_validator, _ticker_repository, _ticker_service
@@ -487,7 +470,6 @@ def reset_dependencies() -> None:
     _user_repository = None
     _portfolio_repository = None
     _analytics_repository = None
-    _auth_service = None
     _oauth_provider = None
     _oauth_service = None
     _portfolio_service = None

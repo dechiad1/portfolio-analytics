@@ -3,8 +3,6 @@ import type {
   Portfolio,
   PortfolioWithUser,
   PortfolioInput,
-  PortfolioHolding,
-  PortfolioHoldingInput,
   PortfolioSummary,
   RiskAnalysisResult,
   RiskAnalysisListItem,
@@ -66,50 +64,6 @@ export async function deletePortfolio(portfolioId: string): Promise<void> {
  */
 export async function getPortfolioSummary(portfolioId: string): Promise<PortfolioSummary> {
   return api.get<PortfolioSummary>(`/portfolios/${portfolioId}/summary`);
-}
-
-/**
- * Fetch all holdings for a portfolio.
- */
-export async function fetchPortfolioHoldings(portfolioId: string): Promise<PortfolioHolding[]> {
-  const response = await api.get<{ holdings: PortfolioHolding[] }>(
-    `/portfolios/${portfolioId}/holdings`
-  );
-  return response.holdings;
-}
-
-/**
- * Add a holding to a portfolio.
- */
-export async function addPortfolioHolding(
-  portfolioId: string,
-  input: PortfolioHoldingInput
-): Promise<PortfolioHolding> {
-  return api.post<PortfolioHolding>(`/portfolios/${portfolioId}/holdings`, input);
-}
-
-/**
- * Update a holding in a portfolio.
- */
-export async function updatePortfolioHolding(
-  portfolioId: string,
-  holdingId: string,
-  input: PortfolioHoldingInput
-): Promise<PortfolioHolding> {
-  return api.put<PortfolioHolding>(
-    `/portfolios/${portfolioId}/holdings/${holdingId}`,
-    input
-  );
-}
-
-/**
- * Delete a holding from a portfolio.
- */
-export async function deletePortfolioHolding(
-  portfolioId: string,
-  holdingId: string
-): Promise<void> {
-  return api.delete(`/portfolios/${portfolioId}/holdings/${holdingId}`);
 }
 
 /**
