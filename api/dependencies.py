@@ -102,11 +102,9 @@ def load_config() -> AppConfig:
 
 # Singleton instances for repositories and services
 _postgres_pool = None
-_holding_repository = None
 _user_repository = None
 _portfolio_repository = None
 _analytics_repository = None
-_holding_service = None
 _auth_service = None
 _oauth_provider = None
 _oauth_service = None
@@ -148,16 +146,6 @@ def get_postgres_pool():
     return _postgres_pool
 
 
-def get_holding_repository():
-    """Get or create HoldingRepository instance."""
-    global _holding_repository
-    if _holding_repository is None:
-        from adapters.postgres.holding_repository import PostgresHoldingRepository
-
-        _holding_repository = PostgresHoldingRepository(get_postgres_pool())
-    return _holding_repository
-
-
 def get_user_repository():
     """Get or create UserRepository instance."""
     global _user_repository
@@ -188,16 +176,6 @@ def get_analytics_repository():
         db_path = Path(__file__).parent / config.database.duckdb.path
         _analytics_repository = DuckDBAnalyticsRepository(str(db_path))
     return _analytics_repository
-
-
-def get_holding_service():
-    """Get or create HoldingService instance for FastAPI dependency injection."""
-    global _holding_service
-    if _holding_service is None:
-        from domain.services.holding_service import HoldingService
-
-        _holding_service = HoldingService(get_holding_repository())
-    return _holding_service
 
 
 def get_auth_service():
@@ -260,7 +238,6 @@ def get_portfolio_service():
 
         _portfolio_service = PortfolioService(
             portfolio_repository=get_portfolio_repository(),
-            holding_repository=get_holding_repository(),
             position_repository=get_position_repository(),
         )
     return _portfolio_service
@@ -302,9 +279,8 @@ def get_risk_analysis_service():
         _risk_analysis_service = RiskAnalysisService(
             llm_repository=get_llm_repository(),
             portfolio_repository=get_portfolio_repository(),
-            holding_repository=get_holding_repository(),
-            risk_analysis_repository=get_risk_analysis_repository(),
             position_repository=get_position_repository(),
+            risk_analysis_repository=get_risk_analysis_repository(),
         )
     return _risk_analysis_service
 
@@ -316,7 +292,7 @@ def get_compute_analytics_command():
         from domain.commands.compute_analytics import ComputeAnalyticsCommand
 
         _compute_analytics_command = ComputeAnalyticsCommand(
-            holding_repository=get_holding_repository(),
+            position_repository=get_position_repository(),
             analytics_repository=get_analytics_repository(),
         )
     return _compute_analytics_command
@@ -377,9 +353,8 @@ def get_simulation_service():
 
         _simulation_service = SimulationService(
             portfolio_repository=get_portfolio_repository(),
-            holding_repository=get_holding_repository(),
-            simulation_params_repository=get_simulation_params_repository(),
             position_repository=get_position_repository(),
+            simulation_params_repository=get_simulation_params_repository(),
         )
     return _simulation_service
 
@@ -492,9 +467,9 @@ def get_transaction_service():
 
 def reset_dependencies() -> None:
     """Reset all singleton instances. Useful for testing."""
-    global _postgres_pool, _holding_repository
+    global _postgres_pool
     global _user_repository, _portfolio_repository
-    global _analytics_repository, _holding_service
+    global _analytics_repository
     global _auth_service, _oauth_provider, _oauth_service, _portfolio_service
     global _llm_repository, _risk_analysis_service, _risk_analysis_repository
     global _compute_analytics_command
@@ -509,11 +484,9 @@ def reset_dependencies() -> None:
         _postgres_pool.close()
 
     _postgres_pool = None
-    _holding_repository = None
     _user_repository = None
     _portfolio_repository = None
     _analytics_repository = None
-    _holding_service = None
     _auth_service = None
     _oauth_provider = None
     _oauth_service = None

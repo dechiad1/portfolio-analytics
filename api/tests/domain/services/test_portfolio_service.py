@@ -1,12 +1,13 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
-from domain.models.holding import Holding
+from domain.models.position import Position
 from domain.models.portfolio import Portfolio
+from domain.models.security import Security
 from domain.services.portfolio_service import (
     PortfolioAccessDeniedError,
     PortfolioNotFoundError,
@@ -41,38 +42,39 @@ def mock_portfolio(portfolio_id, user_id):
     )
 
 
+def _make_security(ticker, name, asset_type="equity", sector="Technology"):
+    return Security(
+        security_id=uuid4(),
+        ticker=ticker,
+        display_name=name,
+        asset_type=asset_type,
+        currency="USD",
+        sector=sector,
+    )
+
+
 @pytest.fixture
-def mock_holdings(portfolio_id):
+def mock_positions(portfolio_id):
+    aapl_security = _make_security("AAPL", "Apple Inc.", "equity", "Technology")
+    bnd_security = _make_security("BND", "Vanguard Bond", "etf", "Bonds")
     return [
-        Holding(
-            id=uuid4(),
+        Position(
             portfolio_id=portfolio_id,
-            ticker="AAPL",
-            name="Apple Inc.",
-            asset_type="equity",
-            asset_class="US Large Cap",
-            sector="Technology",
-            broker="Fidelity",
+            security_id=aapl_security.security_id,
             quantity=Decimal("10"),
-            purchase_price=Decimal("100"),
+            avg_cost=Decimal("100"),
+            updated_at=datetime.now(timezone.utc),
+            security=aapl_security,
             current_price=Decimal("150"),
-            purchase_date=date(2024, 1, 1),
-            created_at=datetime.now(timezone.utc),
         ),
-        Holding(
-            id=uuid4(),
+        Position(
             portfolio_id=portfolio_id,
-            ticker="BND",
-            name="Vanguard Bond",
-            asset_type="etf",
-            asset_class="Bonds",
-            sector="Bonds",
-            broker="Fidelity",
+            security_id=bnd_security.security_id,
             quantity=Decimal("20"),
-            purchase_price=Decimal("50"),
+            avg_cost=Decimal("50"),
+            updated_at=datetime.now(timezone.utc),
+            security=bnd_security,
             current_price=Decimal("50"),
-            purchase_date=date(2024, 1, 1),
-            created_at=datetime.now(timezone.utc),
         ),
     ]
 
@@ -89,17 +91,17 @@ def mock_portfolio_repository(mock_portfolio):
 
 
 @pytest.fixture
-def mock_holding_repository(mock_holdings):
+def mock_position_repository(mock_positions):
     repo = MagicMock()
-    repo.get_by_portfolio_id.return_value = mock_holdings
+    repo.get_by_portfolio_id.return_value = mock_positions
     return repo
 
 
 @pytest.fixture
-def portfolio_service(mock_portfolio_repository, mock_holding_repository):
+def portfolio_service(mock_portfolio_repository, mock_position_repository):
     return PortfolioService(
         portfolio_repository=mock_portfolio_repository,
-        holding_repository=mock_holding_repository,
+        position_repository=mock_position_repository,
     )
 
 
@@ -190,14 +192,14 @@ class TestDeletePortfolio:
             portfolio_service.delete_portfolio(portfolio_id, other_user_id)
 
 
-class TestGetPortfolioHoldings:
-    def test_returns_holdings(self, portfolio_service, portfolio_id, user_id):
-        result = portfolio_service.get_portfolio_holdings(portfolio_id, user_id)
+class TestGetPortfolioPositions:
+    def test_returns_positions(self, portfolio_service, portfolio_id, user_id):
+        result = portfolio_service.get_portfolio_positions(portfolio_id, user_id)
         assert len(result) == 2
 
     def test_raises_for_non_owner(self, portfolio_service, portfolio_id, other_user_id):
         with pytest.raises(PortfolioAccessDeniedError):
-            portfolio_service.get_portfolio_holdings(portfolio_id, other_user_id)
+            portfolio_service.get_portfolio_positions(portfolio_id, other_user_id)
 
 
 class TestGetPortfolioSummary:
@@ -215,8 +217,8 @@ class TestGetPortfolioSummary:
         assert len(result["by_asset_type"]) == 2  # equity, etf
         assert len(result["by_sector"]) == 2  # Technology, Bonds
 
-    def test_empty_portfolio(self, portfolio_service, portfolio_id, user_id, mock_holding_repository):
-        mock_holding_repository.get_by_portfolio_id.return_value = []
+    def test_empty_portfolio(self, portfolio_service, portfolio_id, user_id, mock_position_repository):
+        mock_position_repository.get_by_portfolio_id.return_value = []
         result = portfolio_service.get_portfolio_summary(portfolio_id, user_id)
         assert result["total_value"] == 0.0
         assert result["holdings_count"] == 0

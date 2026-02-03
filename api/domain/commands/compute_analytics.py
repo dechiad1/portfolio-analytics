@@ -3,14 +3,12 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from domain.models.holding import Holding
 from domain.models.position import Position
 from domain.ports.analytics_repository import (
     AnalyticsRepository,
     FundMetadata,
     TickerPerformance,
 )
-from domain.ports.holding_repository import HoldingRepository
 from domain.ports.position_repository import PositionRepository
 
 
@@ -71,19 +69,17 @@ class ComputeAnalyticsCommand:
 
     def __init__(
         self,
-        holding_repository: HoldingRepository,
+        position_repository: PositionRepository,
         analytics_repository: AnalyticsRepository,
-        position_repository: PositionRepository | None = None,
     ) -> None:
-        self._holding_repository = holding_repository
-        self._analytics_repository = analytics_repository
         self._position_repository = position_repository
+        self._analytics_repository = analytics_repository
 
     def execute(self, portfolio_id: UUID | None = None) -> PortfolioAnalytics:
-        """Compute and return analytics for all holdings."""
-        holdings = self._holding_repository.get_all()
+        """Compute and return analytics for all positions."""
+        positions = self._position_repository.get_all()
 
-        if not holdings:
+        if not positions:
             return PortfolioAnalytics(
                 holdings_count=0,
                 avg_total_return_pct=0.0,
@@ -95,7 +91,7 @@ class ComputeAnalyticsCommand:
                 sector_breakdown=[],
             )
 
-        tickers = list({h.ticker for h in holdings})
+        tickers = list({p.ticker for p in positions if p.ticker})
 
         performance_data = self._analytics_repository.get_performance_for_tickers(
             tickers
@@ -106,17 +102,17 @@ class ComputeAnalyticsCommand:
         metadata_by_ticker = self._index_metadata_by_ticker(metadata)
 
         ticker_analytics = self._build_ticker_analytics(
-            holdings, performance_by_ticker, metadata_by_ticker
+            positions, performance_by_ticker, metadata_by_ticker
         )
 
         portfolio_metrics = self._compute_portfolio_metrics(ticker_analytics)
         asset_class_breakdown = self._compute_asset_class_breakdown(
-            holdings, ticker_analytics
+            positions, ticker_analytics
         )
-        sector_breakdown = self._compute_sector_breakdown(holdings, ticker_analytics)
+        sector_breakdown = self._compute_sector_breakdown(positions, ticker_analytics)
 
         return PortfolioAnalytics(
-            holdings_count=len(holdings),
+            holdings_count=len(positions),
             avg_total_return_pct=portfolio_metrics["avg_total_return"],
             avg_annualized_return_pct=portfolio_metrics["avg_annualized_return"],
             avg_sharpe_ratio=portfolio_metrics["avg_sharpe"],
@@ -140,16 +136,20 @@ class ComputeAnalyticsCommand:
 
     def _build_ticker_analytics(
         self,
-        holdings: list[Holding],
+        positions: list[Position],
         performance_by_ticker: dict[str, TickerPerformance],
         metadata_by_ticker: dict[str, FundMetadata],
     ) -> list[TickerAnalytics]:
         """Build analytics for each ticker."""
         result: list[TickerAnalytics] = []
 
-        for holding in holdings:
-            perf = performance_by_ticker.get(holding.ticker)
-            meta = metadata_by_ticker.get(holding.ticker)
+        for position in positions:
+            ticker = position.ticker
+            if not ticker:
+                continue
+
+            perf = performance_by_ticker.get(ticker)
+            meta = metadata_by_ticker.get(ticker)
 
             # Convert Decimal to float and provide defaults
             total_return = float(perf.total_return_pct) if perf and perf.total_return_pct else 0.0
@@ -159,11 +159,16 @@ class ComputeAnalyticsCommand:
             vs_benchmark = float(perf.vs_benchmark_pct) if perf and perf.vs_benchmark_pct else 0.0
             expense_ratio = float(meta.expense_ratio) if meta and meta.expense_ratio else None
 
+            # Get name and other attributes from security if available
+            name = position.security.display_name if position.security else ticker
+            asset_class = "Unknown"  # Not tracked in positions
+            sector = position.security.sector if position.security else "Unknown"
+
             analytics = TickerAnalytics(
-                ticker=holding.ticker,
-                name=holding.name,
-                asset_class=holding.asset_class,
-                sector=holding.sector,
+                ticker=ticker,
+                name=name,
+                asset_class=asset_class,
+                sector=sector,
                 total_return_pct=total_return,
                 annualized_return_pct=annualized_return,
                 volatility_pct=volatility,
@@ -200,18 +205,22 @@ class ComputeAnalyticsCommand:
         }
 
     def _compute_asset_class_breakdown(
-        self, holdings: list[Holding], ticker_analytics: list[TickerAnalytics]
+        self, positions: list[Position], ticker_analytics: list[TickerAnalytics]
     ) -> list[AssetClassBreakdown]:
         """Compute breakdown by asset class with average returns."""
         analytics_by_ticker = {t.ticker: t for t in ticker_analytics}
         breakdown: dict[str, list[float]] = {}
 
-        for holding in holdings:
-            analytics = analytics_by_ticker.get(holding.ticker)
+        for position in positions:
+            ticker = position.ticker
+            if not ticker:
+                continue
+            analytics = analytics_by_ticker.get(ticker)
             if analytics:
-                if holding.asset_class not in breakdown:
-                    breakdown[holding.asset_class] = []
-                breakdown[holding.asset_class].append(analytics.total_return_pct)
+                asset_class = analytics.asset_class
+                if asset_class not in breakdown:
+                    breakdown[asset_class] = []
+                breakdown[asset_class].append(analytics.total_return_pct)
 
         return [
             AssetClassBreakdown(
@@ -223,18 +232,22 @@ class ComputeAnalyticsCommand:
         ]
 
     def _compute_sector_breakdown(
-        self, holdings: list[Holding], ticker_analytics: list[TickerAnalytics]
+        self, positions: list[Position], ticker_analytics: list[TickerAnalytics]
     ) -> list[SectorBreakdown]:
         """Compute breakdown by sector with average returns."""
         analytics_by_ticker = {t.ticker: t for t in ticker_analytics}
         breakdown: dict[str, list[float]] = {}
 
-        for holding in holdings:
-            analytics = analytics_by_ticker.get(holding.ticker)
+        for position in positions:
+            ticker = position.ticker
+            if not ticker:
+                continue
+            analytics = analytics_by_ticker.get(ticker)
             if analytics:
-                if holding.sector not in breakdown:
-                    breakdown[holding.sector] = []
-                breakdown[holding.sector].append(analytics.total_return_pct)
+                sector = analytics.sector
+                if sector not in breakdown:
+                    breakdown[sector] = []
+                breakdown[sector].append(analytics.total_return_pct)
 
         return [
             SectorBreakdown(

@@ -1,13 +1,14 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
-from domain.models.holding import Holding
+from domain.models.position import Position
 from domain.models.portfolio import Portfolio
 from domain.models.risk_analysis import RiskAnalysis
+from domain.models.security import Security
 from domain.ports.llm_repository import RiskAnalysis as LLMRiskAnalysis
 from domain.services.risk_analysis_service import (
     LLM_UNAVAILABLE_MESSAGE,
@@ -43,38 +44,39 @@ def mock_portfolio(portfolio_id, user_id):
     )
 
 
+def _make_security(ticker, name, sector="Technology"):
+    return Security(
+        security_id=uuid4(),
+        ticker=ticker,
+        display_name=name,
+        asset_type="equity",
+        currency="USD",
+        sector=sector,
+    )
+
+
 @pytest.fixture
-def mock_holdings(portfolio_id):
+def mock_positions(portfolio_id):
+    aapl_security = _make_security("AAPL", "Apple Inc.", "Technology")
+    msft_security = _make_security("MSFT", "Microsoft Corporation", "Technology")
     return [
-        Holding(
-            id=uuid4(),
+        Position(
             portfolio_id=portfolio_id,
-            ticker="AAPL",
-            name="Apple Inc.",
-            asset_type="EQUITY",
-            asset_class="US Large Cap",
-            sector="Technology",
-            broker="Test Broker",
+            security_id=aapl_security.security_id,
             quantity=Decimal("10"),
-            purchase_price=Decimal("150.00"),
+            avg_cost=Decimal("150.00"),
+            updated_at=datetime.now(timezone.utc),
+            security=aapl_security,
             current_price=Decimal("175.00"),
-            purchase_date=date(2024, 1, 1),
-            created_at=datetime.now(timezone.utc),
         ),
-        Holding(
-            id=uuid4(),
+        Position(
             portfolio_id=portfolio_id,
-            ticker="MSFT",
-            name="Microsoft Corporation",
-            asset_type="EQUITY",
-            asset_class="US Large Cap",
-            sector="Technology",
-            broker="Test Broker",
+            security_id=msft_security.security_id,
             quantity=Decimal("5"),
-            purchase_price=Decimal("300.00"),
+            avg_cost=Decimal("300.00"),
+            updated_at=datetime.now(timezone.utc),
+            security=msft_security,
             current_price=Decimal("350.00"),
-            purchase_date=date(2024, 1, 1),
-            created_at=datetime.now(timezone.utc),
         ),
     ]
 
@@ -87,9 +89,9 @@ def mock_portfolio_repository(mock_portfolio):
 
 
 @pytest.fixture
-def mock_holding_repository(mock_holdings):
+def mock_position_repository(mock_positions):
     repo = MagicMock()
-    repo.get_by_portfolio_id.return_value = mock_holdings
+    repo.get_by_portfolio_id.return_value = mock_positions
     return repo
 
 
@@ -121,13 +123,13 @@ class TestRiskAnalysisServiceWithNullLLM:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """When LLM repository is None, should return fallback RiskAnalysis."""
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
         )
 
         result = service.analyze_portfolio_risks(portfolio_id, user_id)
@@ -143,13 +145,13 @@ class TestRiskAnalysisServiceWithNullLLM:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """When LLM is None, should not attempt to call LLM methods."""
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
         )
 
         # Should not raise AttributeError
@@ -166,14 +168,14 @@ class TestRiskAnalysisServiceWithLLM:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
         mock_llm_repository,
     ):
         """When LLM repository is available, should call it for analysis."""
         service = RiskAnalysisService(
             llm_repository=mock_llm_repository,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
         )
 
         result = service.analyze_portfolio_risks(portfolio_id, user_id)
@@ -190,7 +192,7 @@ class TestRiskAnalysisServiceAccessControl:
         self,
         portfolio_id,
         user_id,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should raise PortfolioNotFoundError when portfolio does not exist."""
         portfolio_repo = MagicMock()
@@ -199,7 +201,7 @@ class TestRiskAnalysisServiceAccessControl:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=portfolio_repo,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
         )
 
         with pytest.raises(PortfolioNotFoundError):
@@ -209,7 +211,7 @@ class TestRiskAnalysisServiceAccessControl:
         self,
         portfolio_id,
         mock_portfolio,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should raise PortfolioAccessDeniedError when user is not the portfolio owner."""
         other_user_id = uuid4()
@@ -219,7 +221,7 @@ class TestRiskAnalysisServiceAccessControl:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=portfolio_repo,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
         )
 
         with pytest.raises(PortfolioAccessDeniedError):
@@ -230,7 +232,7 @@ class TestRiskAnalysisServiceAccessControl:
         portfolio_id,
         mock_portfolio,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Admin users should be able to access any portfolio."""
         other_user_id = uuid4()
@@ -238,7 +240,7 @@ class TestRiskAnalysisServiceAccessControl:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
         )
 
         # Should not raise even though user_id doesn't match
@@ -257,7 +259,7 @@ class TestRiskAnalysisServicePersistence:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
         mock_llm_repository,
         mock_risk_analysis_repository,
     ):
@@ -265,7 +267,7 @@ class TestRiskAnalysisServicePersistence:
         service = RiskAnalysisService(
             llm_repository=mock_llm_repository,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=mock_risk_analysis_repository,
         )
 
@@ -280,14 +282,14 @@ class TestRiskAnalysisServicePersistence:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
         mock_llm_repository,
     ):
         """Should not attempt persistence when repository is None."""
         service = RiskAnalysisService(
             llm_repository=mock_llm_repository,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=None,
         )
 
@@ -305,7 +307,7 @@ class TestRiskAnalysisServiceGetAnalysis:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should return analysis when it exists and user has access."""
         analysis_id = uuid4()
@@ -324,7 +326,7 @@ class TestRiskAnalysisServiceGetAnalysis:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 
@@ -336,7 +338,7 @@ class TestRiskAnalysisServiceGetAnalysis:
         self,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should raise RiskAnalysisNotFoundError when analysis doesn't exist."""
         analysis_id = uuid4()
@@ -346,7 +348,7 @@ class TestRiskAnalysisServiceGetAnalysis:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 
@@ -356,8 +358,8 @@ class TestRiskAnalysisServiceGetAnalysis:
     def test_get_analysis_raises_access_denied_when_not_owner(
         self,
         portfolio_id,
-        mock_holdings,
-        mock_holding_repository,
+        mock_positions,
+        mock_position_repository,
     ):
         """Should raise RiskAnalysisAccessDeniedError when user doesn't own portfolio."""
         owner_id = uuid4()
@@ -391,7 +393,7 @@ class TestRiskAnalysisServiceGetAnalysis:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=portfolio_repo,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 
@@ -407,7 +409,7 @@ class TestRiskAnalysisServiceListAnalyses:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should return list of analyses for portfolio."""
         analyses = [
@@ -428,7 +430,7 @@ class TestRiskAnalysisServiceListAnalyses:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 
@@ -441,13 +443,13 @@ class TestRiskAnalysisServiceListAnalyses:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should return empty list when repository is None."""
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=None,
         )
 
@@ -464,7 +466,7 @@ class TestRiskAnalysisServiceDeleteAnalysis:
         portfolio_id,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should delete analysis when user has access."""
         analysis_id = uuid4()
@@ -476,7 +478,7 @@ class TestRiskAnalysisServiceDeleteAnalysis:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 
@@ -489,7 +491,7 @@ class TestRiskAnalysisServiceDeleteAnalysis:
         self,
         user_id,
         mock_portfolio_repository,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should raise RiskAnalysisNotFoundError when analysis doesn't exist."""
         analysis_id = uuid4()
@@ -500,7 +502,7 @@ class TestRiskAnalysisServiceDeleteAnalysis:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=mock_portfolio_repository,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 
@@ -510,7 +512,7 @@ class TestRiskAnalysisServiceDeleteAnalysis:
     def test_delete_analysis_raises_access_denied_when_not_owner(
         self,
         portfolio_id,
-        mock_holding_repository,
+        mock_position_repository,
     ):
         """Should raise RiskAnalysisAccessDeniedError when user doesn't own portfolio."""
         owner_id = uuid4()
@@ -535,7 +537,7 @@ class TestRiskAnalysisServiceDeleteAnalysis:
         service = RiskAnalysisService(
             llm_repository=None,
             portfolio_repository=portfolio_repo,
-            holding_repository=mock_holding_repository,
+            position_repository=mock_position_repository,
             risk_analysis_repository=risk_repo,
         )
 

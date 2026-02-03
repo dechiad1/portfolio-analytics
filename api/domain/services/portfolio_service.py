@@ -3,10 +3,8 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from domain.models.portfolio import Portfolio
-from domain.models.holding import Holding
 from domain.models.position import Position
 from domain.ports.portfolio_repository import PortfolioRepository
-from domain.ports.holding_repository import HoldingRepository
 from domain.ports.position_repository import PositionRepository
 
 
@@ -26,11 +24,9 @@ class PortfolioService:
     def __init__(
         self,
         portfolio_repository: PortfolioRepository,
-        holding_repository: HoldingRepository,
-        position_repository: PositionRepository | None = None,
+        position_repository: PositionRepository,
     ) -> None:
         self._portfolio_repo = portfolio_repository
-        self._holding_repo = holding_repository
         self._position_repo = position_repository
 
     def create_portfolio(
@@ -108,20 +104,11 @@ class PortfolioService:
         self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
         self._portfolio_repo.delete(portfolio_id)
 
-    def get_portfolio_holdings(
-        self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
-    ) -> list[Holding]:
-        """Get all holdings in a portfolio."""
-        self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
-        return self._holding_repo.get_by_portfolio_id(portfolio_id)
-
     def get_portfolio_positions(
         self, portfolio_id: UUID, user_id: UUID, is_admin: bool = False
     ) -> list[Position]:
         """Get all positions in a portfolio."""
         self.get_portfolio(portfolio_id, user_id, is_admin)  # Verify access
-        if self._position_repo is None:
-            raise RuntimeError("PositionRepository not configured")
         return self._position_repo.get_by_portfolio_id(portfolio_id)
 
     def get_portfolio_summary(
@@ -129,22 +116,24 @@ class PortfolioService:
     ) -> dict:
         """Get a summary of portfolio composition and value."""
         portfolio = self.get_portfolio(portfolio_id, user_id, is_admin)
-        holdings = self._holding_repo.get_by_portfolio_id(portfolio_id)
+        positions = self._position_repo.get_by_portfolio_id(portfolio_id)
 
         total_value = Decimal("0")
         total_cost = Decimal("0")
         by_asset_type: dict[str, Decimal] = {}
-        by_asset_class: dict[str, Decimal] = {}
         by_sector: dict[str, Decimal] = {}
 
-        for h in holdings:
-            value = h.market_value
+        for p in positions:
+            # Use market_value if available, else cost_basis
+            value = p.market_value if p.market_value else p.cost_basis
             total_value += value
-            total_cost += h.cost_basis
+            total_cost += p.cost_basis
 
-            by_asset_type[h.asset_type] = by_asset_type.get(h.asset_type, Decimal("0")) + value
-            by_asset_class[h.asset_class] = by_asset_class.get(h.asset_class, Decimal("0")) + value
-            by_sector[h.sector] = by_sector.get(h.sector, Decimal("0")) + value
+            if p.security:
+                asset_type = p.security.asset_type or "Unknown"
+                sector = p.security.sector or "Unknown"
+                by_asset_type[asset_type] = by_asset_type.get(asset_type, Decimal("0")) + value
+                by_sector[sector] = by_sector.get(sector, Decimal("0")) + value
 
         def to_percentages(breakdown: dict[str, Decimal]) -> list[dict]:
             if total_value == 0:
@@ -165,8 +154,8 @@ class PortfolioService:
             "total_cost": float(total_cost),
             "total_gain_loss": float(total_value - total_cost),
             "total_gain_loss_percent": float(((total_value - total_cost) / total_cost * 100)) if total_cost > 0 else 0,
-            "holdings_count": len(holdings),
+            "holdings_count": len(positions),
             "by_asset_type": to_percentages(by_asset_type),
-            "by_asset_class": to_percentages(by_asset_class),
+            "by_asset_class": [],  # Not tracked in positions
             "by_sector": to_percentages(by_sector),
         }

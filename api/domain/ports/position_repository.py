@@ -8,6 +8,11 @@ class PositionRepository(ABC):
     """Port for position persistence operations."""
 
     @abstractmethod
+    def get_all(self) -> list[Position]:
+        """Retrieve all positions (across all portfolios)."""
+        pass
+
+    @abstractmethod
     def get_by_portfolio_id(self, portfolio_id: UUID) -> list[Position]:
         """Retrieve all positions for a portfolio."""
         pass

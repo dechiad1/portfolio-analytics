@@ -1,4 +1,5 @@
-from domain.ports.holding_repository import HoldingRepository
+from domain.ports.position_repository import PositionRepository
+from domain.ports.transaction_repository import TransactionRepository
 from domain.ports.user_repository import UserRepository
 from domain.ports.portfolio_repository import PortfolioRepository
 from domain.ports.analytics_repository import AnalyticsRepository
@@ -17,7 +18,8 @@ from domain.value_objects import (
 )
 
 __all__ = [
-    "HoldingRepository",
+    "PositionRepository",
+    "TransactionRepository",
     "UserRepository",
     "PortfolioRepository",
     "AnalyticsRepository",

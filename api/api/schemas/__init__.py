@@ -1,9 +1,9 @@
-from api.schemas.holding import (
-    HoldingResponse,
-    CreateHoldingRequest,
-    UpdateHoldingRequest,
-    HoldingListResponse,
-    BulkCreateHoldingsResponse,
+from api.schemas.position import (
+    AddPositionRequest,
+    PositionResponse,
+    PositionListResponse,
+    TransactionResponse,
+    TransactionListResponse,
 )
 from api.schemas.analytics import AnalyticsResponse
 from api.schemas.auth import (
@@ -21,11 +21,11 @@ from api.schemas.portfolio import (
 )
 
 __all__ = [
-    "HoldingResponse",
-    "CreateHoldingRequest",
-    "UpdateHoldingRequest",
-    "HoldingListResponse",
-    "BulkCreateHoldingsResponse",
+    "AddPositionRequest",
+    "PositionResponse",
+    "PositionListResponse",
+    "TransactionResponse",
+    "TransactionListResponse",
     "AnalyticsResponse",
     "RegisterRequest",
     "LoginRequest",

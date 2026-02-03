@@ -13,6 +13,34 @@ class PostgresPositionRepository(PositionRepository):
     def __init__(self, pool: PostgresConnectionPool) -> None:
         self._pool = pool
 
+    def get_all(self) -> list[Position]:
+        """Retrieve all positions across all portfolios with enriched security data."""
+        with self._pool.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    pc.portfolio_id,
+                    pc.security_id,
+                    pc.quantity,
+                    pc.avg_cost,
+                    pc.updated_at,
+                    sr.display_name,
+                    sr.asset_type::text,
+                    sr.currency,
+                    COALESCE(ed.ticker, 'UNKNOWN') as ticker,
+                    ed.sector,
+                    ed.industry,
+                    ed.exchange
+                FROM position_current pc
+                JOIN security_registry sr ON pc.security_id = sr.security_id
+                LEFT JOIN equity_details ed ON sr.security_id = ed.security_id
+                ORDER BY pc.updated_at ASC
+                """,
+            )
+            rows = cur.fetchall()
+
+        return [self._row_to_position(row) for row in rows]
+
     def get_by_portfolio_id(self, portfolio_id: UUID) -> list[Position]:
         """Retrieve all positions for a portfolio with enriched security data."""
         with self._pool.cursor() as cur:

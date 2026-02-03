@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from domain.models.user import User
 from domain.models.risk_analysis import RiskAnalysis
@@ -10,11 +10,6 @@ from domain.services.portfolio_service import (
     PortfolioService,
     PortfolioNotFoundError,
     PortfolioAccessDeniedError,
-)
-from domain.services.holding_service import (
-    HoldingService,
-    HoldingNotFoundError,
-    HoldingValidationError,
 )
 from domain.services.position_service import (
     PositionService,
@@ -34,13 +29,6 @@ from api.schemas.portfolio import (
     PortfolioSummaryResponse,
     AllPortfoliosListResponse,
 )
-from api.schemas.holding import (
-    CreateHoldingRequest,
-    UpdateHoldingRequest,
-    HoldingResponse,
-    HoldingListResponse,
-    BulkCreateHoldingsResponse,
-)
 from api.schemas.risk_analysis import (
     RiskAnalysisResponse,
     RiskItem,
@@ -55,7 +43,6 @@ from api.schemas.position import (
     TransactionListResponse,
 )
 from api.mappers.portfolio_mapper import PortfolioMapper
-from api.mappers.holding_mapper import HoldingMapper
 from api.routers.auth import get_current_user_id, get_current_user_full
 from domain.services.risk_analysis_service import (
     RiskAnalysisService,
@@ -64,7 +51,6 @@ from domain.services.risk_analysis_service import (
 )
 from dependencies import (
     get_portfolio_service,
-    get_holding_service,
     get_risk_analysis_service,
     get_portfolio_builder_service,
     get_create_portfolio_command,
@@ -284,250 +270,7 @@ def get_portfolio_summary(
         )
 
 
-# Holdings within a portfolio
-@router.get(
-    "/{portfolio_id}/holdings",
-    response_model=HoldingListResponse,
-    summary="List portfolio holdings",
-)
-def list_holdings(
-    portfolio_id: UUID,
-    current_user: Annotated[User, Depends(get_current_user_full)],
-    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-) -> HoldingListResponse:
-    """List all holdings in a portfolio."""
-    try:
-        holdings = portfolio_service.get_portfolio_holdings(
-            portfolio_id, current_user.id, is_admin=current_user.is_admin
-        )
-        return HoldingMapper.to_list_response(holdings)
-    except PortfolioNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Portfolio {portfolio_id} not found",
-        )
-    except PortfolioAccessDeniedError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this portfolio",
-        )
-
-
-@router.post(
-    "/{portfolio_id}/holdings",
-    response_model=HoldingResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Add holding to portfolio",
-)
-def create_holding(
-    portfolio_id: UUID,
-    request: CreateHoldingRequest,
-    current_user: Annotated[User, Depends(get_current_user_full)],
-    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-    holding_service: Annotated[HoldingService, Depends(get_holding_service)],
-) -> HoldingResponse:
-    """Add a new holding to a portfolio."""
-    try:
-        # Verify access to portfolio
-        portfolio_service.get_portfolio(
-            portfolio_id, current_user.id, is_admin=current_user.is_admin
-        )
-
-        holding = holding_service.create_holding(
-            portfolio_id=portfolio_id,
-            ticker=request.ticker,
-            name=request.name,
-            asset_type=request.asset_type,
-            asset_class=request.asset_class,
-            sector=request.sector,
-            broker=request.broker,
-            quantity=request.quantity,
-            purchase_price=request.purchase_price,
-            current_price=request.current_price,
-            purchase_date=request.purchase_date,
-        )
-        return HoldingMapper.to_response(holding)
-    except PortfolioNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Portfolio {portfolio_id} not found",
-        )
-    except PortfolioAccessDeniedError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this portfolio",
-        )
-    except HoldingValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        )
-
-
-@router.post(
-    "/{portfolio_id}/holdings/upload",
-    response_model=BulkCreateHoldingsResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Upload CSV to add holdings",
-)
-async def upload_holdings(
-    portfolio_id: UUID,
-    file: UploadFile,
-    current_user: Annotated[User, Depends(get_current_user_full)],
-    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-    holding_service: Annotated[HoldingService, Depends(get_holding_service)],
-) -> BulkCreateHoldingsResponse:
-    """Upload a CSV file to bulk add holdings to a portfolio."""
-    try:
-        # Verify access to portfolio
-        portfolio_service.get_portfolio(
-            portfolio_id, current_user.id, is_admin=current_user.is_admin
-        )
-
-        if file.content_type not in ("text/csv", "application/csv", "text/plain"):
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail="File must be a CSV",
-            )
-
-        content = await file.read()
-        csv_content = content.decode("utf-8")
-        holdings = holding_service.parse_and_create_holdings_from_csv(
-            portfolio_id, csv_content
-        )
-        return HoldingMapper.to_bulk_create_response(holdings)
-    except PortfolioNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Portfolio {portfolio_id} not found",
-        )
-    except PortfolioAccessDeniedError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this portfolio",
-        )
-    except UnicodeDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="File must be UTF-8 encoded",
-        )
-    except HoldingValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        )
-
-
-@router.put(
-    "/{portfolio_id}/holdings/{holding_id}",
-    response_model=HoldingResponse,
-    summary="Update a holding",
-)
-def update_holding(
-    portfolio_id: UUID,
-    holding_id: UUID,
-    request: UpdateHoldingRequest,
-    current_user: Annotated[User, Depends(get_current_user_full)],
-    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-    holding_service: Annotated[HoldingService, Depends(get_holding_service)],
-) -> HoldingResponse:
-    """Update a holding in a portfolio."""
-    try:
-        # Verify access to portfolio
-        portfolio_service.get_portfolio(
-            portfolio_id, current_user.id, is_admin=current_user.is_admin
-        )
-
-        # Verify holding belongs to portfolio
-        existing = holding_service.get_holding(holding_id)
-        if existing is None or existing.portfolio_id != portfolio_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Holding {holding_id} not found in portfolio",
-            )
-
-        updated = holding_service.update_holding(
-            holding_id=holding_id,
-            ticker=request.ticker,
-            name=request.name,
-            asset_type=request.asset_type,
-            asset_class=request.asset_class,
-            sector=request.sector,
-            broker=request.broker,
-            quantity=request.quantity,
-            purchase_price=request.purchase_price,
-            current_price=request.current_price,
-            purchase_date=request.purchase_date,
-        )
-        return HoldingMapper.to_response(updated)
-    except PortfolioNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Portfolio {portfolio_id} not found",
-        )
-    except PortfolioAccessDeniedError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this portfolio",
-        )
-    except HoldingNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Holding {holding_id} not found",
-        )
-    except HoldingValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        )
-
-
-@router.delete(
-    "/{portfolio_id}/holdings/{holding_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a holding",
-)
-def delete_holding(
-    portfolio_id: UUID,
-    holding_id: UUID,
-    current_user: Annotated[User, Depends(get_current_user_full)],
-    portfolio_service: Annotated[PortfolioService, Depends(get_portfolio_service)],
-    holding_service: Annotated[HoldingService, Depends(get_holding_service)],
-) -> None:
-    """Delete a holding from a portfolio."""
-    try:
-        # Verify access to portfolio
-        portfolio_service.get_portfolio(
-            portfolio_id, current_user.id, is_admin=current_user.is_admin
-        )
-
-        # Verify holding belongs to portfolio
-        existing = holding_service.get_holding(holding_id)
-        if existing is None or existing.portfolio_id != portfolio_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Holding {holding_id} not found in portfolio",
-            )
-
-        holding_service.delete_holding(holding_id)
-    except PortfolioNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Portfolio {portfolio_id} not found",
-        )
-    except PortfolioAccessDeniedError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this portfolio",
-        )
-    except HoldingNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Holding {holding_id} not found",
-        )
-
-
-# Positions (new Position-centric API)
+# Positions
 @router.get(
     "/{portfolio_id}/positions",
     response_model=PositionListResponse,
