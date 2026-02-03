@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { AddPositionInput } from '../../../shared/types';
+import { searchTickers, getTickerDetails, getTickerPrice, type TickerSearchResult } from '../tickerSearchApi';
 import styles from './HoldingModal.module.css';
 
 interface AddPositionModalProps {
@@ -23,6 +24,106 @@ export function AddPositionModal({
     new Date().toISOString().split('T')[0]
   );
 
+  // Ticker search state
+  const [searchResults, setSearchResults] = useState<TickerSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose, isSubmitting]);
+
+  // Debounced ticker search
+  useEffect(() => {
+    if (ticker.length > 0) {
+      setIsSearching(true);
+
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+
+      debounceTimeout.current = setTimeout(async () => {
+        try {
+          const results = await searchTickers(ticker, 10);
+          setSearchResults(results);
+          setShowDropdown(results.length > 0);
+        } catch (error) {
+          console.error('Failed to search tickers:', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300);
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setIsSearching(false);
+    }
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [ticker]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectTicker = useCallback(async (result: TickerSearchResult) => {
+    setTicker(result.ticker);
+    setShowDropdown(false);
+    setSearchResults([]);
+
+    // Fetch detailed ticker info including prices
+    try {
+      const details = await getTickerDetails(result.ticker);
+
+      // Auto-populate price and date
+      if (details.latest_price !== null) {
+        setPrice(details.latest_price.toFixed(2));
+      }
+      if (details.latest_price_date) {
+        setEventDate(details.latest_price_date);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ticker details:', error);
+    }
+  }, []);
+
+  // Handler for purchase date changes - fetch historical price
+  const handleDateChange = useCallback(async (newDate: string) => {
+    setEventDate(newDate);
+
+    if (ticker && newDate) {
+      try {
+        const priceInfo = await getTickerPrice(ticker, newDate);
+        setPrice(priceInfo.price.toFixed(2));
+      } catch (error) {
+        console.error('Failed to fetch price for date:', error);
+        // Keep existing price if fetch fails
+      }
+    }
+  }, [ticker]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -44,11 +145,11 @@ export function AddPositionModal({
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
+      if (e.target === e.currentTarget && !isSubmitting) {
         onClose();
       }
     },
-    [onClose]
+    [onClose, isSubmitting]
   );
 
   const isValid =
@@ -66,6 +167,7 @@ export function AddPositionModal({
             type="button"
             className={styles.closeButton}
             onClick={onClose}
+            disabled={isSubmitting}
             aria-label="Close"
           >
             <svg
@@ -86,9 +188,9 @@ export function AddPositionModal({
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.field}>
+          <div className={`${styles.field} ${styles.tickerField}`} ref={dropdownRef}>
             <label htmlFor="ticker" className={styles.label}>
-              Ticker *
+              Ticker <span className={styles.required}>*</span>
             </label>
             <input
               type="text"
@@ -96,16 +198,36 @@ export function AddPositionModal({
               className={styles.input}
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              placeholder="e.g., AAPL"
+              placeholder="Type to search (e.g., AAPL)"
               required
               autoFocus
+              autoComplete="off"
+              disabled={isSubmitting}
             />
+            {isSearching && (
+              <span className={styles.searchingIndicator}>Searching...</span>
+            )}
+            {showDropdown && searchResults.length > 0 && (
+              <div className={styles.dropdown}>
+                {searchResults.map((result) => (
+                  <div
+                    key={result.ticker}
+                    className={styles.dropdownItem}
+                    onClick={() => handleSelectTicker(result)}
+                  >
+                    <div className={styles.dropdownTicker}>{result.ticker}</div>
+                    <div className={styles.dropdownName}>{result.name}</div>
+                    <div className={styles.dropdownAssetClass}>{result.asset_class}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className={styles.row}>
             <div className={styles.field}>
               <label htmlFor="quantity" className={styles.label}>
-                Quantity *
+                Quantity <span className={styles.required}>*</span>
               </label>
               <input
                 type="number"
@@ -117,12 +239,13 @@ export function AddPositionModal({
                 min="0.0001"
                 step="any"
                 required
+                disabled={isSubmitting}
               />
             </div>
 
             <div className={styles.field}>
               <label htmlFor="price" className={styles.label}>
-                Price *
+                Price <span className={styles.required}>*</span>
               </label>
               <input
                 type="number"
@@ -134,21 +257,23 @@ export function AddPositionModal({
                 min="0"
                 step="0.01"
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
 
           <div className={styles.field}>
             <label htmlFor="eventDate" className={styles.label}>
-              Purchase Date *
+              Purchase Date <span className={styles.required}>*</span>
             </label>
             <input
               type="date"
               id="eventDate"
               className={styles.input}
               value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
+              onChange={(e) => handleDateChange(e.target.value)}
               required
+              disabled={isSubmitting}
             />
           </div>
 

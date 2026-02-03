@@ -1,5 +1,5 @@
 import type { Position } from '../../../shared/types';
-import styles from './PortfolioHoldingsTable.module.css';
+import styles from './PositionsTable.module.css';
 
 interface PositionsTableProps {
   positions: Position[];

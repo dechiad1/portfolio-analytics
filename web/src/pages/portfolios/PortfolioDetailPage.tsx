@@ -22,7 +22,6 @@ export function PortfolioDetailPage() {
     portfolio,
     summary,
     positions,
-    transactions,
     isLoading,
     error,
     isMutating,
