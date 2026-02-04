@@ -2,11 +2,7 @@
 -- Uses present value formula: Price = PV(coupons) + PV(principal)
 -- Only applies to Treasury bonds (issuer_name like '%Treasury%')
 
-{{
-    config(
-        materialized='table'
-    )
-}}
+{{ config(**intermediate_config('int_treasury_bond_prices')) }}
 
 with treasury_yields as (
     select

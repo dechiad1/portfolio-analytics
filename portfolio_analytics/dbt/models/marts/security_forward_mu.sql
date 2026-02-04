@@ -1,6 +1,8 @@
 -- Mart: Forward-looking expected return per security
 -- Derived from analyst price targets (12-month implied return)
 
+{{ config(**mart_config('security_forward_mu')) }}
+
 with analyst_targets as (
     select * from {{ ref('stg_analyst_targets') }}
 ),

@@ -1,6 +1,8 @@
 -- Mart: Annualized volatility (standard deviation) per security
 -- Calculated from daily returns using sqrt(252) annualization factor
 
+{{ config(**mart_config('security_volatility')) }}
+
 with daily_returns as (
     select * from {{ ref('int_daily_returns') }}
 ),

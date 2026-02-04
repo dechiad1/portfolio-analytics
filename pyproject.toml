@@ -25,6 +25,7 @@ psycopg = {extras = ["binary"], version = "^3.3.2"}
 pyiceberg = "^0.7.0"
 s3fs = "^2024.10.0"
 pyarrow = "^17.0.0"
+sqlalchemy = "^2.0.0"
 
 [build-system]
 requires = ["poetry-core"]

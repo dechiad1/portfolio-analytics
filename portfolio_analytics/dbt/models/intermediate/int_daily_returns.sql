@@ -1,5 +1,7 @@
 -- Intermediate model: Calculate daily returns for each holding
 
+{{ config(**intermediate_config('int_daily_returns')) }}
+
 with prices as (
     select * from {{ ref('stg_prices') }}
 ),

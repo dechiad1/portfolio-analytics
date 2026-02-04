@@ -1,11 +1,7 @@
 -- Fact: Daily portfolio value rollup
 -- Computes market value by asset type with proper bond valuation (dirty price)
 
-{{
-    config(
-        materialized='table'
-    )
-}}
+{{ config(**mart_config('fact_portfolio_value_daily')) }}
 
 with fact_position as (
     select * from {{ ref('fact_position_daily') }}

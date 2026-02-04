@@ -2,11 +2,7 @@
 -- Computes accrued interest and dirty price for each bond on each day
 -- This enables proper market value calculation for bond positions
 
-{{
-    config(
-        materialized='table'
-    )
-}}
+{{ config(**mart_config('fact_bond_valuation_daily')) }}
 
 with dim_security as (
     select * from {{ ref('dim_security') }}

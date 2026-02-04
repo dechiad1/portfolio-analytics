@@ -93,6 +93,45 @@ def get_iceberg_catalog():
     return SqlCatalog("portfolio", **catalog_config)
 
 
+def normalize_arrow_schema(table: pa.Table) -> pa.Table:
+    """
+    Normalize PyArrow table schema for Iceberg compatibility.
+
+    - Converts nanosecond timestamps to microsecond
+    - Removes timezone info from timestamps
+    - Converts decimals to float64
+    """
+    new_columns = []
+    new_fields = []
+
+    for i, field in enumerate(table.schema):
+        col = table.column(i)
+        type_str = str(field.type)
+
+        # Handle timestamp conversions
+        if "timestamp" in type_str:
+            # Convert to timestamp[us] without timezone
+            if "ns" in type_str or "tz=" in type_str:
+                # Cast to timestamp[us] (microseconds, no timezone)
+                new_type = pa.timestamp("us")
+                col = col.cast(new_type)
+                new_fields.append(pa.field(field.name, new_type, nullable=field.nullable))
+            else:
+                new_fields.append(field)
+        # Handle decimal conversions
+        elif type_str.startswith("decimal"):
+            new_type = pa.float64()
+            col = col.cast(new_type)
+            new_fields.append(pa.field(field.name, new_type, nullable=field.nullable))
+        else:
+            new_fields.append(field)
+
+        new_columns.append(col)
+
+    new_schema = pa.schema(new_fields)
+    return pa.table(dict(zip([f.name for f in new_fields], new_columns)), schema=new_schema)
+
+
 def read_table_from_duckdb(table_name: str, schema: str = "main_marts") -> pa.Table:
     """Read a table from DuckDB and return as PyArrow table."""
     db_path = get_db_path()
@@ -102,7 +141,8 @@ def read_table_from_duckdb(table_name: str, schema: str = "main_marts") -> pa.Ta
         # Read table into PyArrow
         query = f"SELECT * FROM {schema}.{table_name}"
         result = con.execute(query).fetch_arrow_table()
-        return result
+        # Normalize schema for Iceberg compatibility
+        return normalize_arrow_schema(result)
     finally:
         con.close()
 
@@ -180,9 +220,20 @@ def export_table_to_iceberg(catalog, table_name: str, arrow_table: pa.Table, nam
     # Check if table exists
     try:
         existing_table = catalog.load_table(table_identifier)
-        # Table exists - overwrite data
+        # Table exists - try to overwrite data
         print(f"  Table {table_identifier} exists, overwriting...")
-        existing_table.overwrite(arrow_table)
+        try:
+            existing_table.overwrite(arrow_table)
+        except Exception as overwrite_err:
+            # Schema mismatch - drop and recreate
+            print(f"  Schema mismatch, recreating table...")
+            catalog.drop_table(table_identifier)
+            table = catalog.create_table(
+                identifier=table_identifier,
+                schema=iceberg_schema,
+                partition_spec=PartitionSpec(),
+            )
+            table.append(arrow_table)
     except Exception:
         # Table doesn't exist - create it
         print(f"  Creating new table {table_identifier}...")
