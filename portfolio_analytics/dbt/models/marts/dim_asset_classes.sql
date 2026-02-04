@@ -1,5 +1,7 @@
 -- Marts model: Asset class distribution and analysis
 
+{{ config(**mart_config('dim_asset_classes')) }}
+
 with holdings as (
     select * from {{ ref('stg_holdings') }}
 ),

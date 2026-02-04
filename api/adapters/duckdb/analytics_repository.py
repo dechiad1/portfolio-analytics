@@ -1,5 +1,5 @@
 from decimal import Decimal
-from pathlib import Path
+from datetime import date
 
 import duckdb
 
@@ -10,22 +10,19 @@ from domain.ports.analytics_repository import (
     TickerDetails,
     TickerPriceAtDate,
 )
-from datetime import date
+from .base_repository import BaseDuckDBRepository
 
 
-class DuckDBAnalyticsRepository(AnalyticsRepository):
-    """DuckDB implementation of AnalyticsRepository for reading from data warehouse."""
+class DuckDBAnalyticsRepository(BaseDuckDBRepository, AnalyticsRepository):
+    """DuckDB implementation of AnalyticsRepository for reading from data warehouse.
 
-    def __init__(self, database_path: str) -> None:
-        self._database_path = Path(database_path)
-        if not self._database_path.exists():
-            raise FileNotFoundError(
-                f"DuckDB database not found at {self._database_path}"
-            )
+    Supports two modes:
+    - Local file mode: Reads from a local DuckDB file
+    - Iceberg mode: Reads from Iceberg tables on S3 via DuckDB's Iceberg extension
 
-    def _get_connection(self) -> duckdb.DuckDBPyConnection:
-        """Get a read-only connection to DuckDB."""
-        return duckdb.connect(str(self._database_path), read_only=True)
+    Both modes use identical SQL queries - the _table_ref() method from the base class
+    returns the appropriate table reference for each mode.
+    """
 
     def get_performance_for_tickers(
         self, tickers: list[str]
@@ -35,6 +32,7 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
             return []
 
         placeholders = ", ".join(["?" for _ in tickers])
+        table_ref = self._table_ref("fct_performance")
 
         query = f"""
             SELECT
@@ -44,7 +42,7 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
                 volatility_pct,
                 sharpe_ratio,
                 vs_benchmark_pct
-            FROM main_marts.fct_performance
+            FROM {table_ref}
             WHERE ticker IN ({placeholders})
         """
 
@@ -72,6 +70,7 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
             return []
 
         placeholders = ", ".join(["?" for _ in tickers])
+        table_ref = self._table_ref("dim_funds")
 
         query = f"""
             SELECT
@@ -81,7 +80,7 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
                 category,
                 expense_ratio_pct,
                 fund_inception_date
-            FROM main_marts.dim_funds
+            FROM {table_ref}
             WHERE ticker IN ({placeholders})
         """
 
@@ -111,8 +110,9 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
             return []
 
         search_term = f"%{query.upper()}%"
+        table_ref = self._table_ref("dim_funds")
 
-        query_sql = """
+        query_sql = f"""
             SELECT
                 ticker,
                 fund_name,
@@ -120,7 +120,7 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
                 category,
                 expense_ratio_pct,
                 fund_inception_date
-            FROM main_marts.dim_funds
+            FROM {table_ref}
             WHERE UPPER(ticker) LIKE ? OR UPPER(fund_name) LIKE ?
             ORDER BY
                 CASE
@@ -157,7 +157,11 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
 
     def get_all_securities(self) -> list[tuple[FundMetadata, TickerPerformance | None]]:
         """Retrieve all securities with their performance data."""
-        query = """
+        dim_funds_ref = self._table_ref("dim_funds")
+        fct_perf_ref = self._table_ref("fct_performance")
+
+        # iceberg_scan() returns a table expression that works directly in JOINs
+        query = f"""
             SELECT
                 d.ticker,
                 d.fund_name,
@@ -180,8 +184,8 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
                 p.return_vs_sp500_5y_pct,
                 p.volatility_5y_pct,
                 p.sharpe_ratio_5y
-            FROM main_marts.dim_funds d
-            LEFT JOIN main_marts.fct_performance p ON d.ticker = p.ticker
+            FROM {dim_funds_ref} d
+            LEFT JOIN {fct_perf_ref} p ON d.ticker = p.ticker
             ORDER BY d.ticker
         """
 
@@ -229,13 +233,17 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
 
     def get_ticker_details(self, ticker: str) -> TickerDetails | None:
         """Get detailed ticker info including latest price for holding creation."""
-        query = """
+        dim_funds_ref = self._table_ref("dim_funds")
+        fact_price_ref = self._table_ref("fact_price_daily")
+        dim_security_ref = self._table_ref("dim_security")
+
+        query = f"""
             WITH latest_price AS (
                 SELECT
                     p.price,
                     p.as_of_date
-                FROM main_marts.fact_price_daily p
-                JOIN main_marts.dim_security s ON p.security_id = s.security_id
+                FROM {fact_price_ref} p
+                JOIN {dim_security_ref} s ON p.security_id = s.security_id
                 WHERE UPPER(s.ticker) = UPPER(?)
                 ORDER BY p.as_of_date DESC
                 LIMIT 1
@@ -248,7 +256,7 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
                 d.category,
                 lp.price,
                 lp.as_of_date
-            FROM main_marts.dim_funds d
+            FROM {dim_funds_ref} d
             LEFT JOIN latest_price lp ON 1=1
             WHERE UPPER(d.ticker) = UPPER(?)
         """
@@ -274,13 +282,16 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
 
     def get_price_for_date(self, ticker: str, price_date: date) -> TickerPriceAtDate | None:
         """Get the price for a ticker at or before a specific date."""
-        query = """
+        fact_price_ref = self._table_ref("fact_price_daily")
+        dim_security_ref = self._table_ref("dim_security")
+
+        query = f"""
             SELECT
                 s.ticker,
                 p.as_of_date,
                 p.price
-            FROM main_marts.fact_price_daily p
-            JOIN main_marts.dim_security s ON p.security_id = s.security_id
+            FROM {fact_price_ref} p
+            JOIN {dim_security_ref} s ON p.security_id = s.security_id
             WHERE UPPER(s.ticker) = UPPER(?)
               AND p.as_of_date <= ?
             ORDER BY p.as_of_date DESC

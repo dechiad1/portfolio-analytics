@@ -17,10 +17,32 @@ class PostgresConfig(BaseModel):
     password: str
 
 
+class S3Config(BaseModel):
+    """S3-compatible storage configuration."""
+
+    endpoint: Optional[str] = None
+    access_key_id: str = ""
+    secret_access_key: str = ""
+    bucket: str = ""
+    prefix: str = "portfolio-analytics"
+    region: str = "us-east-1"
+
+
+class IcebergConfig(BaseModel):
+    """Iceberg catalog configuration."""
+
+    enabled: bool = False
+    catalog_uri: str = ""
+    catalog_name: str = "portfolio"
+    namespace: str = "marts"
+
+
 class DuckDBConfig(BaseModel):
     """DuckDB configuration."""
 
     path: str
+    s3: Optional[S3Config] = None
+    iceberg: Optional[IcebergConfig] = None
 
 
 class DatabaseConfig(BaseModel):
@@ -172,8 +194,30 @@ def get_analytics_repository():
         from adapters.duckdb.analytics_repository import DuckDBAnalyticsRepository
 
         config = load_config()
-        db_path = Path(__file__).parent / config.database.duckdb.path
-        _analytics_repository = DuckDBAnalyticsRepository(str(db_path))
+        duckdb_config = config.database.duckdb
+
+        # Check if Iceberg mode is enabled
+        iceberg_config = None
+        if duckdb_config.iceberg and duckdb_config.iceberg.enabled:
+            from adapters.duckdb.iceberg_connection import IcebergConnectionConfig
+
+            iceberg_config = IcebergConnectionConfig(
+                s3_endpoint=duckdb_config.s3.endpoint if duckdb_config.s3 else None,
+                s3_access_key_id=duckdb_config.s3.access_key_id if duckdb_config.s3 else "",
+                s3_secret_access_key=duckdb_config.s3.secret_access_key if duckdb_config.s3 else "",
+                s3_region=duckdb_config.s3.region if duckdb_config.s3 else "us-east-1",
+                s3_bucket=duckdb_config.s3.bucket if duckdb_config.s3 else "",
+                s3_prefix=duckdb_config.s3.prefix if duckdb_config.s3 else "portfolio-analytics",
+                catalog_uri=duckdb_config.iceberg.catalog_uri,
+                catalog_name=duckdb_config.iceberg.catalog_name,
+                namespace=duckdb_config.iceberg.namespace,
+            )
+            _analytics_repository = DuckDBAnalyticsRepository(
+                database_path=None, iceberg_config=iceberg_config
+            )
+        else:
+            db_path = Path(__file__).parent / duckdb_config.path
+            _analytics_repository = DuckDBAnalyticsRepository(str(db_path))
     return _analytics_repository
 
 
@@ -323,8 +367,30 @@ def get_simulation_params_repository():
         )
 
         config = load_config()
-        db_path = Path(__file__).parent / config.database.duckdb.path
-        _simulation_params_repository = DuckDBSimulationParamsRepository(str(db_path))
+        duckdb_config = config.database.duckdb
+
+        # Check if Iceberg mode is enabled
+        iceberg_config = None
+        if duckdb_config.iceberg and duckdb_config.iceberg.enabled:
+            from adapters.duckdb.iceberg_connection import IcebergConnectionConfig
+
+            iceberg_config = IcebergConnectionConfig(
+                s3_endpoint=duckdb_config.s3.endpoint if duckdb_config.s3 else None,
+                s3_access_key_id=duckdb_config.s3.access_key_id if duckdb_config.s3 else "",
+                s3_secret_access_key=duckdb_config.s3.secret_access_key if duckdb_config.s3 else "",
+                s3_region=duckdb_config.s3.region if duckdb_config.s3 else "us-east-1",
+                s3_bucket=duckdb_config.s3.bucket if duckdb_config.s3 else "",
+                s3_prefix=duckdb_config.s3.prefix if duckdb_config.s3 else "portfolio-analytics",
+                catalog_uri=duckdb_config.iceberg.catalog_uri,
+                catalog_name=duckdb_config.iceberg.catalog_name,
+                namespace=duckdb_config.iceberg.namespace,
+            )
+            _simulation_params_repository = DuckDBSimulationParamsRepository(
+                database_path=None, iceberg_config=iceberg_config
+            )
+        else:
+            db_path = Path(__file__).parent / duckdb_config.path
+            _simulation_params_repository = DuckDBSimulationParamsRepository(str(db_path))
     return _simulation_params_repository
 
 

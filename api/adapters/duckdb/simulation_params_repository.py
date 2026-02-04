@@ -1,7 +1,5 @@
 """DuckDB implementation of SimulationParamsRepository."""
 
-from pathlib import Path
-
 import duckdb
 import numpy as np
 from numpy.typing import NDArray
@@ -10,21 +8,19 @@ from domain.ports.simulation_params_repository import (
     SimulationParamsRepository,
     SecuritySimParams,
 )
+from .base_repository import BaseDuckDBRepository
 
 
-class DuckDBSimulationParamsRepository(SimulationParamsRepository):
-    """DuckDB implementation for fetching simulation parameters."""
+class DuckDBSimulationParamsRepository(BaseDuckDBRepository, SimulationParamsRepository):
+    """DuckDB implementation for fetching simulation parameters.
 
-    def __init__(self, database_path: str) -> None:
-        self._database_path = Path(database_path)
-        if not self._database_path.exists():
-            raise FileNotFoundError(
-                f"DuckDB database not found at {self._database_path}"
-            )
+    Supports two modes:
+    - Local file mode: Reads from a local DuckDB file
+    - Iceberg mode: Reads from Iceberg tables on S3 via DuckDB's Iceberg extension
 
-    def _get_connection(self) -> duckdb.DuckDBPyConnection:
-        """Get a read-only connection to DuckDB."""
-        return duckdb.connect(str(self._database_path), read_only=True)
+    Both modes use identical SQL queries - the _table_ref() method from the base class
+    returns the appropriate table reference for each mode.
+    """
 
     def get_security_params(self, tickers: list[str]) -> list[SecuritySimParams]:
         """Fetch mu and volatility for the given securities."""
@@ -33,15 +29,20 @@ class DuckDBSimulationParamsRepository(SimulationParamsRepository):
 
         placeholders = ", ".join(["?" for _ in tickers])
 
+        hmu_ref = self._table_ref("security_historical_mu")
+        fmu_ref = self._table_ref("security_forward_mu")
+        vol_ref = self._table_ref("security_volatility")
+
+        # iceberg_scan() returns a table expression that works directly in JOINs
         query = f"""
             SELECT
                 hmu.ticker,
                 hmu.annualized_mu as historical_mu,
                 fmu.forward_mu,
                 vol.annualized_volatility as volatility
-            FROM main_marts.security_historical_mu hmu
-            LEFT JOIN main_marts.security_forward_mu fmu ON hmu.ticker = fmu.ticker
-            LEFT JOIN main_marts.security_volatility vol ON hmu.ticker = vol.ticker
+            FROM {hmu_ref} hmu
+            LEFT JOIN {fmu_ref} fmu ON hmu.ticker = fmu.ticker
+            LEFT JOIN {vol_ref} vol ON hmu.ticker = vol.ticker
             WHERE hmu.ticker IN ({placeholders})
         """
 
@@ -69,13 +70,14 @@ class DuckDBSimulationParamsRepository(SimulationParamsRepository):
             return {}
 
         placeholders = ", ".join(["?" for _ in tickers])
+        table_ref = self._table_ref("int_daily_returns", "intermediate")
 
         query = f"""
             SELECT
                 ticker,
                 date,
                 daily_return
-            FROM main_intermediate.int_daily_returns
+            FROM {table_ref}
             WHERE ticker IN ({placeholders})
               AND daily_return IS NOT NULL
             ORDER BY ticker, date

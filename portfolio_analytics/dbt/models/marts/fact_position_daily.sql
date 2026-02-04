@@ -2,11 +2,7 @@
 -- Built from current positions (v1: no historical backfill)
 -- Future enhancement: replay transaction_ledger for historical positions
 
-{{
-    config(
-        materialized='table'
-    )
-}}
+{{ config(**mart_config('fact_position_daily')) }}
 
 with position_current as (
     select * from {{ ref('stg_position_current') }}

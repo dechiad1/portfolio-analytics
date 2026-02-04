@@ -2,11 +2,7 @@
 -- Combines tickers from seed file and user portfolios (PostgreSQL)
 -- Used by Python ingestion scripts to know which tickers to fetch data for
 
-{{
-  config(
-    materialized='table'
-  )
-}}
+{{ config(**mart_config('dim_ticker_tracker')) }}
 
 with seed_tickers as (
     -- Tickers from manually curated seed file

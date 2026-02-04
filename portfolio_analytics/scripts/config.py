@@ -6,6 +6,10 @@ import os
 import csv
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .storage import Storage
 
 # ============================================================================
 # DATA INGESTION SETTINGS
@@ -177,6 +181,23 @@ def get_ticker_source():
     if tickers:
         return "DuckDB (dim_ticker_tracker)"
     return "CSV (holdings.csv)"
+
+
+def get_storage(force_local: bool = False) -> "Storage":
+    """
+    Get the appropriate storage backend based on configuration.
+
+    Args:
+        force_local: If True, always use local DuckDB storage.
+
+    Returns:
+        Storage instance (LocalDuckDBStorage or S3ParquetStorage).
+    """
+    try:
+        from .storage import get_storage as _get_storage
+    except ImportError:
+        from storage import get_storage as _get_storage
+    return _get_storage(force_local=force_local)
 
 
 if __name__ == "__main__":

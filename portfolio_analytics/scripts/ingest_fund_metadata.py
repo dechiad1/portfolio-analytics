@@ -5,12 +5,11 @@ Run this less frequently than price data (weekly/monthly)
 
 import yfinance as yf
 import pandas as pd
-import duckdb
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent))
-from config import TICKERS, get_db_path
+from config import TICKERS, get_storage
 
 def fetch_fund_metadata(tickers):
     """
@@ -22,7 +21,7 @@ def fetch_fund_metadata(tickers):
     Returns:
         DataFrame with fund metadata
     """
-    print(f"\n📊 Fetching fund metadata for {len(tickers)} tickers...")
+    print(f"\n Fetching fund metadata for {len(tickers)} tickers...")
     print("-" * 60)
 
     metadata_list = []
@@ -84,16 +83,16 @@ def fetch_fund_metadata(tickers):
                 else:
                     metadata['top_sectors'] = None
 
-            except (AttributeError, Exception) as e:
+            except (AttributeError, Exception):
                 # Not a fund or data unavailable
                 metadata['asset_distribution'] = None
                 metadata['top_sectors'] = None
 
             metadata_list.append(metadata)
-            print(f"✓ {metadata['fund_name'][:40]}")
+            print(f"{metadata['fund_name'][:40]}")
 
         except Exception as e:
-            print(f"❌ Error: {str(e)}")
+            print(f"Error: {str(e)}")
             # Add minimal record on error
             metadata_list.append({
                 'ticker': ticker,
@@ -115,70 +114,38 @@ def fetch_fund_metadata(tickers):
     df = pd.DataFrame(metadata_list)
 
     print("-" * 60)
-    print(f"✓ Successfully fetched metadata for {len(df)} / {len(tickers)} tickers")
+    print(f"Successfully fetched metadata for {len(df)} / {len(tickers)} tickers")
     print(f"Records with expense ratio: {df['expense_ratio'].notna().sum()}")
     print(f"Records with asset distribution: {df['asset_distribution'].notna().sum()}")
 
     return df
 
-def load_to_duckdb(df, table_name='raw_fund_metadata'):
+def load_to_storage(df, table_name='raw_fund_metadata'):
     """
-    Load fund metadata into DuckDB database
+    Load fund metadata into storage (DuckDB or S3)
 
     Args:
         df: DataFrame to load
         table_name: Name of the table to create/replace
     """
-    print(f"\n💾 Loading fund metadata to DuckDB...")
+    print(f"\n Loading fund metadata to storage...")
 
-    db_path = get_db_path()
-    print(f"Database: {db_path}")
-
-    # Connect to DuckDB
-    con = duckdb.connect(db_path)
-
-    # Drop table if exists and create new one
-    con.execute(f"DROP TABLE IF EXISTS {table_name}")
-    con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
-
-    # Verify the data
-    count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-    print(f"✓ Loaded {count:,} records to table '{table_name}'")
+    storage = get_storage()
+    storage.write_table(df, table_name)
 
     # Show sample
     print("\nSample data:")
-    sample = con.execute(f"""
-        SELECT
-            ticker,
-            fund_name,
-            expense_ratio,
-            fund_family,
-            category,
-            CASE
-                WHEN asset_distribution IS NOT NULL AND LENGTH(CAST(asset_distribution AS VARCHAR)) > 50
-                THEN SUBSTRING(CAST(asset_distribution AS VARCHAR), 1, 50) || '...'
-                ELSE CAST(asset_distribution AS VARCHAR)
-            END as asset_distribution_preview
-        FROM {table_name}
-        LIMIT 5
-    """).df()
+    sample = df[['ticker', 'fund_name', 'expense_ratio', 'fund_family', 'category']].head()
     print(sample.to_string(index=False))
 
     # Show data quality stats
     print("\nData Quality Summary:")
-    stats = con.execute(f"""
-        SELECT
-            COUNT(*) as total_records,
-            SUM(CASE WHEN expense_ratio IS NOT NULL THEN 1 ELSE 0 END) as has_expense_ratio,
-            SUM(CASE WHEN fund_family IS NOT NULL THEN 1 ELSE 0 END) as has_fund_family,
-            SUM(CASE WHEN category IS NOT NULL THEN 1 ELSE 0 END) as has_category,
-            SUM(CASE WHEN asset_distribution IS NOT NULL THEN 1 ELSE 0 END) as has_asset_dist,
-            SUM(CASE WHEN long_business_summary IS NOT NULL THEN 1 ELSE 0 END) as has_description
-        FROM {table_name}
-    """).df()
-    print(stats.to_string(index=False))
-
-    con.close()
+    print(f"  Total records: {len(df)}")
+    print(f"  Has expense ratio: {df['expense_ratio'].notna().sum()}")
+    print(f"  Has fund family: {df['fund_family'].notna().sum()}")
+    print(f"  Has category: {df['category'].notna().sum()}")
+    print(f"  Has asset distribution: {df['asset_distribution'].notna().sum()}")
+    print(f"  Has description: {df['long_business_summary'].notna().sum()}")
 
 def main():
     """Main execution function"""
@@ -192,11 +159,11 @@ def main():
         # Fetch metadata
         metadata_df = fetch_fund_metadata(TICKERS)
 
-        # Load to database
-        load_to_duckdb(metadata_df, 'raw_fund_metadata')
+        # Load to storage
+        load_to_storage(metadata_df, 'raw_fund_metadata')
 
         print("\n" + "=" * 60)
-        print("✓ SUCCESS: Fund metadata ingestion complete!")
+        print("SUCCESS: Fund metadata ingestion complete!")
         print("=" * 60)
         print("\nNext steps:")
         print("1. Run: cd dbt && dbt run")
@@ -205,7 +172,7 @@ def main():
         print("You can manually add missing data to the table or supplement with other sources.")
 
     except Exception as e:
-        print(f"\n❌ ERROR: {str(e)}")
+        print(f"\n ERROR: {str(e)}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

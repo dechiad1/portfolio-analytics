@@ -1,6 +1,8 @@
 -- Mart: Historical annualized mean return per security
 -- Calculated from daily returns using 252 trading days per year
 
+{{ config(**mart_config('security_historical_mu')) }}
+
 with daily_returns as (
     select * from {{ ref('int_daily_returns') }}
 ),

@@ -1,11 +1,7 @@
 -- Marts model: Comprehensive fund dimension with metadata and performance
 -- Uses dim_ticker_tracker as the canonical source of tickers
 
-{{
-  config(
-    materialized='table'
-  )
-}}
+{{ config(**mart_config('dim_funds')) }}
 
 with ticker_tracker as (
     -- Canonical source of all tickers to track

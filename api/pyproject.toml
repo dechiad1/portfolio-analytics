@@ -11,7 +11,7 @@ python = "^3.11"
 fastapi = "^0.109.0"
 uvicorn = {extras = ["standard"], version = "^0.27.0"}
 psycopg = {extras = ["binary", "pool"], version = "^3.1.0"}
-duckdb = "^0.10.0"
+duckdb = "^1.1.0"
 pydantic = "^2.5.0"
 pyyaml = "^6.0"
 python-multipart = "^0.0.6"
@@ -73,3 +73,9 @@ name = "Adapters cannot import api"
 type = "forbidden"
 source_modules = ["adapters"]
 forbidden_modules = ["api"]
+
+[[tool.importlinter.contracts]]
+name = "API cannot import adapters"
+type = "forbidden"
+source_modules = ["api"]
+forbidden_modules = ["adapters"]

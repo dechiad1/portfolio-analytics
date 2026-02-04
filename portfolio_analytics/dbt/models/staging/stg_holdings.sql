@@ -1,7 +1,8 @@
--- Staging model: Portfolio holdings from seed data
+-- Staging model: Portfolio holdings from S3
+-- Note: holdings.parquet must be uploaded to S3 (converted from seeds/holdings.csv)
 
 with source as (
-    select * from {{ ref('holdings') }}
+    select * from {{ source('seeds', 'holdings') }}
 ),
 
 cleaned as (

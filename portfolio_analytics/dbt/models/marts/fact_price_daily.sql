@@ -2,11 +2,7 @@
 -- Equities/ETFs: closing price from market data
 -- Bonds: clean price derived from Treasury yield curve
 
-{{
-    config(
-        materialized='table'
-    )
-}}
+{{ config(**mart_config('fact_price_daily')) }}
 
 with dim_security as (
     select * from {{ ref('dim_security') }}

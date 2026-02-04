@@ -1,6 +1,8 @@
 -- Dimension: Unified security dimension with denormalized attributes
 -- Includes equity, ETF, and bond details for all active securities
 
+{{ config(**mart_config('dim_security')) }}
+
 with security_registry as (
     select * from {{ ref('stg_security_registry') }}
 ),

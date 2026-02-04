@@ -1,6 +1,8 @@
 -- Marts model: Calculate performance metrics for each holding
 -- Includes both 1-year and 5-year performance metrics
 
+{{ config(**mart_config('fct_performance')) }}
+
 with daily_returns as (
     select * from {{ ref('int_daily_returns') }}
 ),

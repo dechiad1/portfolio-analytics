@@ -1,256 +1,83 @@
 version: 2
 
+# =============================================================================
+# S3 EXTERNAL SOURCES
+# =============================================================================
+# All data is stored as Parquet files on S3-compatible storage.
+# Environment switching is done via S3 configuration (endpoint, bucket).
+#
+# Local dev:  S3_ENDPOINT_HOST=localhost:4567  (LocalStack)
+# Production: S3_ENDPOINT_HOST=s3.amazonaws.com (or empty for AWS default)
+#
+# Prerequisites:
+#   - S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY environment variables
+#   - S3_BUCKET, S3_PREFIX environment variables
+#   - Data loaded via ingestion scripts
+# =============================================================================
+
 sources:
   # =============================================================================
-  # RAW MARKET DATA (loaded by Python ingestion scripts)
+  # RAW MARKET DATA
   # =============================================================================
   - name: raw
-    description: Raw market data tables loaded from Python ingestion scripts
-    schema: main
+    description: Raw market data stored as Parquet files on S3
+    meta:
+      external_location: "read_parquet('s3://{{ env_var('S3_BUCKET', 'portfolio-analytics') }}/{{ env_var('S3_PREFIX', 'data') }}/raw/{name}.parquet')"
     tables:
       - name: raw_prices
         description: Historical price data for equities/ETFs
-        columns:
-          - name: date
-            description: Trading date
-          - name: ticker
-            description: Stock/fund ticker symbol
-          - name: open
-            description: Opening price
-          - name: high
-            description: High price
-          - name: low
-            description: Low price
-          - name: close
-            description: Closing price (adjusted)
-          - name: volume
-            description: Trading volume
 
       - name: raw_benchmark_prices
         description: Benchmark (S&P 500) price data
-        columns:
-          - name: date
-            description: Trading date
-          - name: benchmark_ticker
-            description: Benchmark ticker (e.g., VFIAX)
-          - name: benchmark_price
-            description: Benchmark closing price
 
       - name: raw_treasury_yields
-        description: Treasury yield curve data from FRED for bond pricing
-        columns:
-          - name: date
-            description: Date
-          - name: tenor
-            description: Yield curve tenor (2Y, 5Y, 10Y, 30Y)
-          - name: yield_rate
-            description: Yield rate as decimal (e.g., 0.0425 = 4.25%)
+        description: Treasury yield curve data from FRED
 
       - name: raw_fund_metadata
         description: Fund metadata from Yahoo Finance API
-        columns:
-          - name: ticker
-            description: Fund ticker symbol
-          - name: fund_name
-            description: Official fund name
-          - name: expense_ratio
-            description: Annual expense ratio
-          - name: fund_family
-            description: Fund family/provider
-          - name: category
-            description: Fund category/classification
-          - name: fund_inception_date
-            description: Fund inception date
-          - name: total_assets
-            description: Total assets under management
-          - name: currency
-            description: Fund currency
-          - name: exchange
-            description: Exchange where fund is traded
-          - name: quote_type
-            description: Security type (ETF, MUTUALFUND, EQUITY)
-          - name: long_business_summary
-            description: Fund mandate/description
-          - name: asset_distribution
-            description: Asset allocation breakdown
-          - name: top_sectors
-            description: Top sector weightings
 
       - name: raw_analyst_targets
         description: Analyst price targets from Yahoo Finance API
-        columns:
-          - name: ticker
-            description: Stock/fund ticker symbol
-          - name: current_price
-            description: Current market price
-          - name: target_mean_price
-            description: Mean analyst 12-month price target
-          - name: target_high_price
-            description: Highest analyst price target
-          - name: target_low_price
-            description: Lowest analyst price target
-          - name: analyst_count
-            description: Number of analysts covering this security
-          - name: implied_return
-            description: Implied return from mean target (target/current - 1)
-          - name: fetched_at
-            description: Timestamp when data was fetched
 
   # =============================================================================
-  # POSTGRES REPLICATED DATA (transactional system of record)
+  # POSTGRES REPLICATED DATA
   # =============================================================================
   - name: postgres
-    description: Replicated tables from Postgres transactional database
-    schema: main
+    description: Replicated tables from Postgres stored as Parquet on S3
+    meta:
+      external_location: "read_parquet('s3://{{ env_var('S3_BUCKET', 'portfolio-analytics') }}/{{ env_var('S3_PREFIX', 'data') }}/raw/{name}.parquet')"
     tables:
       - name: pg_portfolio
         description: Portfolio/account ownership
-        columns:
-          - name: portfolio_id
-            description: Primary key (UUID)
-          - name: user_id
-            description: Owner user ID
-          - name: name
-            description: Portfolio name
-          - name: base_currency
-            description: Base currency (e.g., USD)
-          - name: created_at
-            description: Creation timestamp
-          - name: updated_at
-            description: Last update timestamp
 
       - name: pg_security_registry
         description: Canonical security identity
-        columns:
-          - name: security_id
-            description: Primary key (UUID)
-          - name: asset_type
-            description: Asset type (EQUITY, ETF, BOND, CASH)
-          - name: currency
-            description: Security currency
-          - name: display_name
-            description: Display name
-          - name: is_active
-            description: Whether security is active
-          - name: created_at
-            description: Creation timestamp
-          - name: updated_at
-            description: Last update timestamp
 
       - name: pg_security_identifier
-        description: Multiple identifiers per security (TICKER, CUSIP, ISIN)
-        columns:
-          - name: id
-            description: Primary key (UUID)
-          - name: security_id
-            description: Foreign key to security_registry
-          - name: id_type
-            description: Identifier type (TICKER, CUSIP, ISIN)
-          - name: id_value
-            description: Identifier value
-          - name: source
-            description: Source of identifier
-          - name: is_primary
-            description: Whether this is the primary identifier
-          - name: created_at
-            description: Creation timestamp
+        description: Multiple identifiers per security
 
       - name: pg_equity_details
         description: Equity/ETF subtype details
-        columns:
-          - name: security_id
-            description: Primary key / foreign key to security_registry
-          - name: ticker
-            description: Ticker symbol
-          - name: exchange
-            description: Exchange code
-          - name: country
-            description: Country code
-          - name: sector
-            description: Sector classification
-          - name: industry
-            description: Industry classification
-          - name: created_at
-            description: Creation timestamp
-          - name: updated_at
-            description: Last update timestamp
 
       - name: pg_bond_details
-        description: Bond subtype details (fixed and zero coupon)
-        columns:
-          - name: security_id
-            description: Primary key / foreign key to security_registry
-          - name: issuer_name
-            description: Bond issuer name
-          - name: coupon_type
-            description: Coupon type (FIXED, ZERO)
-          - name: coupon_rate
-            description: Annual coupon rate (nullable for ZERO)
-          - name: payment_frequency
-            description: Coupon payment frequency
-          - name: day_count_convention
-            description: Day count convention for accrual
-          - name: issue_date
-            description: Bond issue date
-          - name: maturity_date
-            description: Bond maturity date
-          - name: par_value
-            description: Par/face value (typically 100)
-          - name: price_quote_convention
-            description: How prices are quoted
-          - name: created_at
-            description: Creation timestamp
-          - name: updated_at
-            description: Last update timestamp
+        description: Bond subtype details
 
       - name: pg_transaction_ledger
-        description: Append-only transaction ledger (paper trades + cash flows)
-        columns:
-          - name: txn_id
-            description: Primary key (UUID)
-          - name: portfolio_id
-            description: Foreign key to portfolio
-          - name: event_ts
-            description: Event timestamp
-          - name: txn_type
-            description: Transaction type (BUY, SELL, DEPOSIT, WITHDRAW, FEE, DIVIDEND, COUPON)
-          - name: security_id
-            description: Foreign key to security_registry (nullable for cash events)
-          - name: quantity
-            description: Quantity (shares, face amount, or currency amount)
-          - name: price
-            description: Price (nullable for cash events)
-          - name: fees
-            description: Transaction fees
-          - name: currency
-            description: Transaction currency
-          - name: notes
-            description: Optional notes
-          - name: created_at
-            description: Creation timestamp
+        description: Append-only transaction ledger
 
       - name: pg_position_current
-        description: Current positions (materialized from ledger)
-        columns:
-          - name: portfolio_id
-            description: Foreign key to portfolio
-          - name: security_id
-            description: Foreign key to security_registry
-          - name: quantity
-            description: Current quantity held
-          - name: avg_cost
-            description: Simple average cost basis
-          - name: updated_at
-            description: Last update timestamp
+        description: Current positions
 
       - name: pg_cash_balance
         description: Cash balances per portfolio per currency
-        columns:
-          - name: portfolio_id
-            description: Foreign key to portfolio
-          - name: currency
-            description: Currency code
-          - name: balance
-            description: Current cash balance
-          - name: updated_at
-            description: Last update timestamp
+
+  # =============================================================================
+  # SEED DATA (uploaded to S3)
+  # =============================================================================
+  - name: seeds
+    description: Seed data uploaded to S3
+    meta:
+      external_location: "read_parquet('s3://{{ env_var('S3_BUCKET', 'portfolio-analytics') }}/{{ env_var('S3_PREFIX', 'data') }}/seeds/{name}.parquet')"
+    tables:
+      - name: holdings
+        description: Reference holdings data

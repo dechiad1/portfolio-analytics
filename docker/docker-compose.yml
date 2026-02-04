@@ -38,8 +38,28 @@ services:
       retries: 5
     restart: unless-stopped
 
+  localstack:
+    image: localstack/localstack:latest
+    container_name: portfolio-analytics-localstack
+    ports:
+      - "4567:4566"  # LocalStack gateway
+    environment:
+      - SERVICES=s3
+      - DEBUG=0
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - "./localstack-init:/etc/localstack/init/ready.d"
+    healthcheck:
+      test: ["CMD", "awslocal", "s3", "ls"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
   oauth_data:
     driver: local
+  localstack_data:
