@@ -1,8 +1,5 @@
 """DuckDB implementation of SimulationParamsRepository."""
 
-from pathlib import Path
-from typing import Optional
-
 import duckdb
 import numpy as np
 from numpy.typing import NDArray
@@ -11,73 +8,19 @@ from domain.ports.simulation_params_repository import (
     SimulationParamsRepository,
     SecuritySimParams,
 )
+from .base_repository import BaseDuckDBRepository
 
 
-class DuckDBSimulationParamsRepository(SimulationParamsRepository):
+class DuckDBSimulationParamsRepository(BaseDuckDBRepository, SimulationParamsRepository):
     """DuckDB implementation for fetching simulation parameters.
 
     Supports two modes:
     - Local file mode: Reads from a local DuckDB file
     - Iceberg mode: Reads from Iceberg tables on S3 via DuckDB's Iceberg extension
+
+    Both modes use identical SQL queries - the _table_ref() method from the base class
+    returns the appropriate table reference for each mode.
     """
-
-    def __init__(
-        self,
-        database_path: Optional[str] = None,
-        iceberg_config: Optional["IcebergConnectionConfig"] = None,  # noqa: F821
-    ) -> None:
-        """
-        Initialize the simulation params repository.
-
-        Args:
-            database_path: Path to local DuckDB file (for local mode)
-            iceberg_config: Configuration for Iceberg mode (mutually exclusive with database_path)
-        """
-        self._database_path: Optional[Path] = None
-        self._iceberg_config = iceberg_config
-
-        if iceberg_config is not None:
-            # Iceberg mode
-            self._mode = "iceberg"
-        elif database_path is not None:
-            # Local file mode
-            self._mode = "local"
-            self._database_path = Path(database_path)
-            if not self._database_path.exists():
-                raise FileNotFoundError(
-                    f"DuckDB database not found at {self._database_path}"
-                )
-        else:
-            raise ValueError("Either database_path or iceberg_config must be provided")
-
-    def _get_connection(self) -> duckdb.DuckDBPyConnection:
-        """Get a connection to DuckDB."""
-        if self._mode == "iceberg":
-            from .iceberg_connection import create_iceberg_connection
-            return create_iceberg_connection(self._iceberg_config)
-        else:
-            return duckdb.connect(str(self._database_path), read_only=True)
-
-    def _table_ref(self, table_name: str, schema: str = "marts") -> str:
-        """
-        Get the table reference for a given table name.
-
-        Args:
-            table_name: Name of the table
-            schema: Schema/namespace (marts, intermediate)
-
-        Returns:
-            Table reference string for SQL queries
-        """
-        if self._mode == "iceberg":
-            from .iceberg_connection import iceberg_scan_sql
-            # For Iceberg, use the config to build the table path
-            namespace = "marts" if schema == "marts" else schema.replace("main_", "")
-            table_path = self._iceberg_config.get_table_path(namespace, table_name)
-            return iceberg_scan_sql(table_path)
-        else:
-            duckdb_schema = f"main_{schema}" if not schema.startswith("main_") else schema
-            return f"{duckdb_schema}.{table_name}"
 
     def get_security_params(self, tickers: list[str]) -> list[SecuritySimParams]:
         """Fetch mu and volatility for the given securities."""
@@ -90,33 +33,18 @@ class DuckDBSimulationParamsRepository(SimulationParamsRepository):
         fmu_ref = self._table_ref("security_forward_mu")
         vol_ref = self._table_ref("security_volatility")
 
-        if self._mode == "iceberg":
-            query = f"""
-                WITH hmu AS (SELECT * FROM {hmu_ref}),
-                     fmu AS (SELECT * FROM {fmu_ref}),
-                     vol AS (SELECT * FROM {vol_ref})
-                SELECT
-                    hmu.ticker,
-                    hmu.annualized_mu as historical_mu,
-                    fmu.forward_mu,
-                    vol.annualized_volatility as volatility
-                FROM hmu
-                LEFT JOIN fmu ON hmu.ticker = fmu.ticker
-                LEFT JOIN vol ON hmu.ticker = vol.ticker
-                WHERE hmu.ticker IN ({placeholders})
-            """
-        else:
-            query = f"""
-                SELECT
-                    hmu.ticker,
-                    hmu.annualized_mu as historical_mu,
-                    fmu.forward_mu,
-                    vol.annualized_volatility as volatility
-                FROM {hmu_ref} hmu
-                LEFT JOIN {fmu_ref} fmu ON hmu.ticker = fmu.ticker
-                LEFT JOIN {vol_ref} vol ON hmu.ticker = vol.ticker
-                WHERE hmu.ticker IN ({placeholders})
-            """
+        # iceberg_scan() returns a table expression that works directly in JOINs
+        query = f"""
+            SELECT
+                hmu.ticker,
+                hmu.annualized_mu as historical_mu,
+                fmu.forward_mu,
+                vol.annualized_volatility as volatility
+            FROM {hmu_ref} hmu
+            LEFT JOIN {fmu_ref} fmu ON hmu.ticker = fmu.ticker
+            LEFT JOIN {vol_ref} vol ON hmu.ticker = vol.ticker
+            WHERE hmu.ticker IN ({placeholders})
+        """
 
         with self._get_connection() as conn:
             try:
