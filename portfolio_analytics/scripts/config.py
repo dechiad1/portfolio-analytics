@@ -193,7 +193,10 @@ def get_storage(force_local: bool = False) -> "Storage":
     Returns:
         Storage instance (LocalDuckDBStorage or S3ParquetStorage).
     """
-    from .storage import get_storage as _get_storage
+    try:
+        from .storage import get_storage as _get_storage
+    except ImportError:
+        from storage import get_storage as _get_storage
     return _get_storage(force_local=force_local)
 
 

@@ -72,15 +72,9 @@ class DuckDBAnalyticsRepository(AnalyticsRepository):
         """
         if self._mode == "iceberg":
             from .iceberg_connection import iceberg_scan_sql
-            # For Iceberg, we need to use the iceberg_scan function
-            # Extract S3 path from config
-            # Note: This assumes the table path follows the pattern:
-            # s3://bucket/prefix/iceberg/namespace/table_name
-            import os
-            bucket = os.getenv("S3_BUCKET", "")
-            prefix = os.getenv("S3_PREFIX", "portfolio-analytics")
+            # For Iceberg, use the config to build the table path
             namespace = "marts" if schema == "marts" else schema.replace("main_", "")
-            table_path = f"s3://{bucket}/{prefix}/iceberg/{namespace}/{table_name}"
+            table_path = self._iceberg_config.get_table_path(namespace, table_name)
             return iceberg_scan_sql(table_path)
         else:
             # For local mode, use schema.table format

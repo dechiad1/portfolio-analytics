@@ -125,10 +125,6 @@ DUCKDB_SCHEMAS = {
             quantity DECIMAL(18, 8) NOT NULL,
             avg_cost DECIMAL(18, 8) NOT NULL,
             updated_at TIMESTAMP NOT NULL,
-            broker VARCHAR(100) NOT NULL,
-            purchase_date DATE NOT NULL,
-            current_price DECIMAL(18, 8),
-            asset_class VARCHAR(100) NOT NULL,
             PRIMARY KEY (portfolio_id, security_id)
         )
     """,
@@ -190,11 +186,9 @@ def replicate_to_local_duckdb(pg_conn, db_path: str) -> int:
         print(f"  Replicating {source_table} -> {target_table}...")
 
         try:
-            # Create table schema
-            duck_conn.execute(DUCKDB_SCHEMAS[source_table])
-
-            # Truncate existing data
-            duck_conn.execute(f"DELETE FROM {target_table}")
+            # Drop and recreate table to handle schema changes
+            duck_conn.execute(f"DROP TABLE IF EXISTS {target_table}")
+            duck_conn.execute(DUCKDB_SCHEMAS[source_table].replace("IF NOT EXISTS ", ""))
 
             # Fetch data from Postgres
             df = fetch_table_data(pg_conn, source_table)
@@ -262,7 +256,7 @@ def main():
         storage = get_storage()
 
         # Check storage type and replicate accordingly
-        from .storage import LocalDuckDBStorage, S3ParquetStorage
+        from storage import LocalDuckDBStorage, S3ParquetStorage
 
         if isinstance(storage, LocalDuckDBStorage):
             print(f"Target: Local DuckDB ({get_db_path()})")

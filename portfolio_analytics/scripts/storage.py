@@ -155,11 +155,19 @@ def get_storage(force_local: bool = False) -> Storage:
     The storage backend is selected based on:
     1. If force_local is True, use local DuckDB
     2. If USE_S3_STORAGE env var is set to "true", use S3
-    3. If S3 is configured (credentials and bucket set), use S3
-    4. Otherwise, use local DuckDB
+    3. Otherwise, use local DuckDB (default for development)
+
+    Note: S3 is only used when explicitly enabled via USE_S3_STORAGE=true.
+    This ensures local development uses DuckDB even if S3 credentials
+    happen to be in the environment.
     """
-    from .config import get_db_path
-    from .s3_config import get_s3_config
+    # Use try/except for imports to handle both module and script contexts
+    try:
+        from .config import get_db_path
+        from .s3_config import get_s3_config
+    except ImportError:
+        from config import get_db_path
+        from s3_config import get_s3_config
 
     # Check for explicit local mode
     if force_local:

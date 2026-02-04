@@ -19,13 +19,25 @@ class IcebergConnectionConfig:
     s3_access_key_id: str
     s3_secret_access_key: str
     s3_region: str
+    s3_bucket: str
+    s3_prefix: str
     catalog_uri: str
     catalog_name: str
     namespace: str
 
-    def get_warehouse_path(self, bucket: str, prefix: str) -> str:
+    def get_warehouse_path(self) -> str:
         """Get the S3 warehouse path for Iceberg tables."""
-        return f"s3://{bucket}/{prefix}/iceberg"
+        return f"s3://{self.s3_bucket}/{self.s3_prefix}/iceberg"
+
+    def get_table_path(self, namespace: str, table_name: str) -> str:
+        """Get the S3 path for a specific Iceberg table."""
+        return f"s3://{self.s3_bucket}/{self.s3_prefix}/iceberg/{namespace}/{table_name}"
+
+
+def _escape_sql_string(value: str) -> str:
+    """Escape a string for use in DuckDB SET statements."""
+    # Escape single quotes by doubling them
+    return value.replace("'", "''")
 
 
 def create_iceberg_connection(config: IcebergConnectionConfig) -> duckdb.DuckDBPyConnection:
@@ -47,13 +59,18 @@ def create_iceberg_connection(config: IcebergConnectionConfig) -> duckdb.DuckDBP
     conn.execute("INSTALL iceberg")
     conn.execute("LOAD iceberg")
 
-    # Configure S3 credentials
-    conn.execute(f"SET s3_access_key_id = '{config.s3_access_key_id}'")
-    conn.execute(f"SET s3_secret_access_key = '{config.s3_secret_access_key}'")
-    conn.execute(f"SET s3_region = '{config.s3_region}'")
+    # Configure S3 credentials (escape to prevent injection)
+    access_key = _escape_sql_string(config.s3_access_key_id)
+    secret_key = _escape_sql_string(config.s3_secret_access_key)
+    region = _escape_sql_string(config.s3_region)
+
+    conn.execute(f"SET s3_access_key_id = '{access_key}'")
+    conn.execute(f"SET s3_secret_access_key = '{secret_key}'")
+    conn.execute(f"SET s3_region = '{region}'")
 
     if config.s3_endpoint:
-        conn.execute(f"SET s3_endpoint = '{config.s3_endpoint}'")
+        endpoint = _escape_sql_string(config.s3_endpoint)
+        conn.execute(f"SET s3_endpoint = '{endpoint}'")
         conn.execute("SET s3_url_style = 'path'")
         # Determine SSL based on endpoint
         use_ssl = config.s3_endpoint.startswith("https")
