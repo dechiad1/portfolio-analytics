@@ -17,8 +17,22 @@ class PostgresConfig(BaseModel):
     password: str
 
 
+class StorageConfig(BaseModel):
+    """Cloud storage configuration for OLAP data."""
+
+    enabled: bool = False
+    credential_type: str = "static"  # "static" or "adc"
+    bucket: str = ""
+    prefix: str = "portfolio-analytics"
+    region: str = "us-east-1"
+    endpoint: Optional[str] = None  # For LocalStack
+    access_key_id: str = ""
+    secret_access_key: str = ""
+    use_gcs_prefix: bool = False  # Use gs:// instead of s3://
+
+
 class S3Config(BaseModel):
-    """S3-compatible storage configuration."""
+    """S3-compatible storage configuration (legacy - use StorageConfig)."""
 
     endpoint: Optional[str] = None
     access_key_id: str = ""
@@ -29,7 +43,7 @@ class S3Config(BaseModel):
 
 
 class IcebergConfig(BaseModel):
-    """Iceberg catalog configuration."""
+    """Iceberg catalog configuration (legacy)."""
 
     enabled: bool = False
     catalog_uri: str = ""
@@ -41,6 +55,8 @@ class DuckDBConfig(BaseModel):
     """DuckDB configuration."""
 
     path: str
+    storage: Optional[StorageConfig] = None
+    # Legacy configs
     s3: Optional[S3Config] = None
     iceberg: Optional[IcebergConfig] = None
 
@@ -187,6 +203,37 @@ def get_portfolio_repository():
     return _portfolio_repository
 
 
+def _create_storage_config_and_provider(duckdb_config: DuckDBConfig):
+    """Create storage config and credential provider from DuckDB config."""
+    from adapters.duckdb.storage_connection import (
+        ADCCredentialProvider,
+        StaticCredentialProvider,
+        StorageConnectionConfig,
+    )
+
+    storage = duckdb_config.storage
+    storage_config = StorageConnectionConfig(
+        bucket=storage.bucket,
+        prefix=storage.prefix,
+        region=storage.region,
+        credential_type=storage.credential_type,
+        endpoint=storage.endpoint,
+        access_key_id=storage.access_key_id if storage.credential_type == "static" else None,
+        secret_access_key=storage.secret_access_key if storage.credential_type == "static" else None,
+        use_gcs_prefix=storage.use_gcs_prefix,
+    )
+
+    if storage.credential_type == "adc":
+        credential_provider = ADCCredentialProvider()
+    else:
+        credential_provider = StaticCredentialProvider(
+            access_key_id=storage.access_key_id,
+            secret_access_key=storage.secret_access_key,
+        )
+
+    return storage_config, credential_provider
+
+
 def get_analytics_repository():
     """Get or create AnalyticsRepository instance."""
     global _analytics_repository
@@ -196,9 +243,17 @@ def get_analytics_repository():
         config = load_config()
         duckdb_config = config.database.duckdb
 
-        # Check if Iceberg mode is enabled
-        iceberg_config = None
-        if duckdb_config.iceberg and duckdb_config.iceberg.enabled:
+        # Check for new storage mode first
+        if duckdb_config.storage and duckdb_config.storage.enabled:
+            storage_config, credential_provider = _create_storage_config_and_provider(
+                duckdb_config
+            )
+            _analytics_repository = DuckDBAnalyticsRepository(
+                storage_config=storage_config,
+                credential_provider=credential_provider,
+            )
+        # Legacy: Check if Iceberg mode is enabled
+        elif duckdb_config.iceberg and duckdb_config.iceberg.enabled:
             from adapters.duckdb.iceberg_connection import IcebergConnectionConfig
 
             iceberg_config = IcebergConnectionConfig(
@@ -369,9 +424,17 @@ def get_simulation_params_repository():
         config = load_config()
         duckdb_config = config.database.duckdb
 
-        # Check if Iceberg mode is enabled
-        iceberg_config = None
-        if duckdb_config.iceberg and duckdb_config.iceberg.enabled:
+        # Check for new storage mode first
+        if duckdb_config.storage and duckdb_config.storage.enabled:
+            storage_config, credential_provider = _create_storage_config_and_provider(
+                duckdb_config
+            )
+            _simulation_params_repository = DuckDBSimulationParamsRepository(
+                storage_config=storage_config,
+                credential_provider=credential_provider,
+            )
+        # Legacy: Check if Iceberg mode is enabled
+        elif duckdb_config.iceberg and duckdb_config.iceberg.enabled:
             from adapters.duckdb.iceberg_connection import IcebergConnectionConfig
 
             iceberg_config = IcebergConnectionConfig(

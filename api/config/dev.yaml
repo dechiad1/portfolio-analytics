@@ -6,13 +6,24 @@ database:
     user: portfolio_api
     password: ${POSTGRES_PASSWORD}
   duckdb:
-    path: /data/portfolio.duckdb
+    path: /data/portfolio.duckdb  # Fallback for local mode
+    # Optional: Storage config for LocalStack/S3 testing
+    # storage:
+    #   enabled: true
+    #   credential_type: static
+    #   bucket: ${S3_BUCKET}
+    #   prefix: ${S3_PREFIX}
+    #   region: us-east-1
+    #   endpoint: http://localstack:4566
+    #   access_key_id: ${S3_ACCESS_KEY_ID}
+    #   secret_access_key: ${S3_SECRET_ACCESS_KEY}
 
 server:
   host: 0.0.0.0
   port: 8000
   cors_origins:
     - https://dev.portfolio-analytics.example.com
+  frontend_url: https://dev.portfolio-analytics.example.com
 
 auth:
   jwt_secret: ${JWT_SECRET}
