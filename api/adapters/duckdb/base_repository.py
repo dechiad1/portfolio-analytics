@@ -1,22 +1,30 @@
-"""Base class for DuckDB repositories with S3/Iceberg support."""
+"""Base class for DuckDB repositories with cloud storage support."""
 
 from pathlib import Path
 from typing import Optional
 
 import duckdb
 
+from .storage_connection import (
+    CredentialProvider,
+    StorageConnectionConfig,
+    create_storage_connection,
+    read_parquet_sql,
+)
+
+# Keep legacy imports for backward compatibility during migration
 from .iceberg_connection import IcebergConnectionConfig, create_iceberg_connection
 
 
 class BaseDuckDBRepository:
-    """Base class for DuckDB repositories supporting both local and S3/Iceberg modes.
+    """Base class for DuckDB repositories supporting local and cloud storage modes.
 
     This class provides common connection management and table reference logic
     for repositories that read from either:
     - A local DuckDB file (development)
-    - Iceberg tables on S3 via DuckDB's iceberg extension (production)
+    - Parquet files on S3/GCS via DuckDB's httpfs extension (production)
 
-    The key insight is that `iceberg_scan('s3://path')` returns a table expression
+    The key insight is that `read_parquet('s3://path')` returns a table expression
     that can be used directly in FROM clauses and JOINs, just like a regular table.
     This allows us to use identical SQL queries for both modes.
     """
@@ -24,6 +32,9 @@ class BaseDuckDBRepository:
     def __init__(
         self,
         database_path: Optional[str] = None,
+        storage_config: Optional[StorageConnectionConfig] = None,
+        credential_provider: Optional[CredentialProvider] = None,
+        # Legacy parameter for backward compatibility
         iceberg_config: Optional[IcebergConnectionConfig] = None,
     ) -> None:
         """
@@ -31,16 +42,24 @@ class BaseDuckDBRepository:
 
         Args:
             database_path: Path to local DuckDB file (for local mode)
-            iceberg_config: Configuration for Iceberg mode (mutually exclusive with database_path)
+            storage_config: Configuration for cloud storage mode
+            credential_provider: Provider for storage credentials
+            iceberg_config: DEPRECATED - Legacy Iceberg configuration
 
         Raises:
-            ValueError: If neither database_path nor iceberg_config is provided
+            ValueError: If no valid configuration is provided
             FileNotFoundError: If database_path is provided but the file doesn't exist
         """
         self._database_path: Optional[Path] = None
+        self._storage_config = storage_config
+        self._credential_provider = credential_provider
+        # Legacy
         self._iceberg_config = iceberg_config
 
-        if iceberg_config is not None:
+        if storage_config is not None:
+            self._mode = "storage"
+        elif iceberg_config is not None:
+            # Legacy mode
             self._mode = "iceberg"
         elif database_path is not None:
             self._mode = "local"
@@ -50,15 +69,22 @@ class BaseDuckDBRepository:
                     f"DuckDB database not found at {self._database_path}"
                 )
         else:
-            raise ValueError("Either database_path or iceberg_config must be provided")
+            raise ValueError(
+                "Either database_path or storage_config must be provided"
+            )
 
     def _get_connection(self) -> duckdb.DuckDBPyConnection:
         """Get a connection to DuckDB.
 
         For local mode: connects to the file in read-only mode.
-        For iceberg mode: creates an in-memory connection with S3/httpfs configured.
+        For storage mode: creates an in-memory connection with httpfs configured.
+        For iceberg mode: legacy - creates connection with iceberg extension.
         """
-        if self._mode == "iceberg":
+        if self._mode == "storage":
+            return create_storage_connection(
+                self._storage_config, self._credential_provider
+            )
+        elif self._mode == "iceberg":
             return create_iceberg_connection(self._iceberg_config)
         else:
             return duckdb.connect(str(self._database_path), read_only=True)
@@ -68,7 +94,7 @@ class BaseDuckDBRepository:
         Get the table reference for a given table name.
 
         This method returns a string that can be used directly in SQL FROM clauses,
-        including JOINs. For iceberg mode, this returns an iceberg_scan() function
+        including JOINs. For storage mode, this returns a read_parquet() function
         call which DuckDB treats as a table expression.
 
         Args:
@@ -78,9 +104,14 @@ class BaseDuckDBRepository:
         Returns:
             Table reference string for SQL queries.
             - Local mode: "main_marts.table_name"
+            - Storage mode: "read_parquet('s3://bucket/prefix/namespace/table.parquet')"
             - Iceberg mode: "iceberg_scan('s3://bucket/prefix/iceberg/namespace/table')"
         """
-        if self._mode == "iceberg":
+        if self._mode == "storage":
+            namespace = "marts" if schema == "marts" else schema.replace("main_", "")
+            parquet_path = self._storage_config.get_parquet_path(namespace, table_name)
+            return read_parquet_sql(parquet_path)
+        elif self._mode == "iceberg":
             from .iceberg_connection import iceberg_scan_sql
 
             namespace = "marts" if schema == "marts" else schema.replace("main_", "")
