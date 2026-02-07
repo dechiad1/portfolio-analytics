@@ -31,20 +31,20 @@ The API follows hexagonal architecture. See `.claude/reference/hexagonal-archite
 
 ## Issue Tracking (beads)
 
-This project uses [Beads](https://github.com/steveyegge/beads) for issue tracking. See `.beads/README.md` for basic commands.
+This project uses [Beads](https://github.com/steveyegge/beads) for issue tracking. Beads data is stored externally via the `BEADS_DIR` env variable (set in `.envrc`), not in this repo.
 
 **Important:** Do not store sensitive information (passwords, API keys) in issue descriptions.
 
 ### Workflow
 
-Always work on feature branches, not main. Commit code and `.beads/` together so issue state stays in sync.
+Always work on feature branches, not main.
 
 ```bash
 git checkout -b feature/my-feature
 bd update <id> --status in_progress
 # ... make changes ...
-git add <files> .beads/
 bd sync
+git add <files>
 git commit -m "..."
 git push
 ```
