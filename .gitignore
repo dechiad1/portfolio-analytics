@@ -46,6 +46,7 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+.envrc
 
 # Streamlit
 .streamlit/
@@ -62,3 +63,6 @@ holdings.csv
 web/playwright-report
 web/test-results
 .playwright-mcp/
+
+# Beads (external via BEADS_DIR)
+.beads/
